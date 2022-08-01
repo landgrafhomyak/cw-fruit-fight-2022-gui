@@ -11,6 +11,7 @@ class FruitFight2022MainWindow(QMainWindow):
         self.__client_config_tab = FruitFight2022ClientConfiguration(self, client_worker)
         self.__account_auth_tab = FruitFight2022AccountAuth(self, client_worker)
         self.setCentralWidget(self.__client_config_tab)
+        client_worker.client_created.connect(self.__on_client_created)
 
     @Slot()
     def __on_client_created(self):
@@ -120,6 +121,3 @@ class FruitFight2022AccountAuth(QWidget):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
         layout.setColumnStretch(2, 0)
-
-
-
