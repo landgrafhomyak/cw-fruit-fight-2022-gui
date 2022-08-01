@@ -14,11 +14,9 @@ class ClientWorker(QObject):
 
     def __init__(self) -> None: ...
 
-    error_cc_happened = Signal(str)
+    failed_creating_client = Signal(str)
     client_created = Signal()
-    auth_complete = Signal()
-
-    def __set_cc_error(self, message) -> None: ...
+    auth_completed = Signal()
 
     async def __create_client_async(self, api_id: str, api_hash: str, session: Union[str, MemorySession]) -> None: ...
 
@@ -30,13 +28,12 @@ class ClientWorker(QObject):
     @Slot(str, str)
     def create_client_in_memory(self, api_id: str, api_hash: str) -> None: ...
 
-    error_aa_happened = Signal(str)
+    failed_sending_phone = Signal(str)
     requesting_code = Signal()
-
-    def __set_aa_error(self, message) -> None: ...
+    failed_sending_code_and_password = Signal(str)
 
     @Slot(str)
     def send_phone(self, phone) -> None: ...
 
-    @Slot(str, str)
-    def send_code_and_password(self, code, password) -> None: ...
+    @Slot(str, str, str)
+    def send_code_and_password(self, phone, code, password) -> None: ...

@@ -10,16 +10,13 @@ from telethon import TelegramClient
 class ClientWorker(QObject):
     def __init__(self):
         super().__init__()
-        self.mutex = QMutex()
+        # self.mutex = QMutex()
         self.aioloop = None
         self.telegram_client = None
 
-    error_cc_happened = Signal(str)
+    failed_creating_client = Signal(str)
     client_created = Signal()
-    auth_complete = Signal()
-
-    def __set_cc_error(self, message):
-        self.error_cc_happened.emit(message)
+    auth_completed = Signal()
 
     async def __create_client_async(self, api_id, api_hash, session):
         self.telegram_client = TelegramClient(
@@ -28,12 +25,13 @@ class ClientWorker(QObject):
             api_hash=api_hash,
             loop=self.aioloop,
         )
+        await self.telegram_client.connect()
         return await self.telegram_client.is_user_authorized()
 
     def __create_client(self, api_id, api_hash, session):
-        if not self.mutex.tryLock(5):
-            self.__set_cc_error("Failed to lock mutex")
-            return
+        # if not self.mutex.tryLock(5):
+        #     self.__set_cc_error("Failed to lock mutex")
+        #     return
         try:
             if self.aioloop is None:
                 self.aioloop = asyncio.new_event_loop()
@@ -41,12 +39,13 @@ class ClientWorker(QObject):
             authorized = self.aioloop.run_until_complete(self.__create_client_async(api_id, api_hash, session))
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
-            self.__set_cc_error(str(exc))
+            self.failed_creating_client.emit(str(exc))
             return
-        finally:
-            self.mutex.unlock()
+        # finally:
+        #     self.mutex.unlock()
+
         if authorized:
-            self.auth_complete.emit()
+            self.auth_completed.emit()
         else:
             self.client_created.emit()
 
@@ -58,11 +57,9 @@ class ClientWorker(QObject):
     def create_client_in_memory(self, api_id, api_hash):
         self.__create_client(api_id, api_hash, MemorySession())
 
-    error_aa_happened = Signal(str)
+    failed_sending_phone = Signal(str)
     requesting_code = Signal()
-
-    def __set_aa_error(self, message):
-        self.error_aa_happened.emit(message)
+    failed_sending_code_and_password = Signal(str)
 
     @Slot(str)
     def send_phone(self, phone):
@@ -70,16 +67,17 @@ class ClientWorker(QObject):
             self.aioloop.run_until_complete(self.telegram_client.send_code_request(phone))
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
-            self.__set_aa_error(str(exc))
+            self.failed_sending_phone.emit(str(exc))
+            return
         else:
             self.requesting_code.emit()
 
-    @Slot(str, str)
-    def send_code_and_password(self, code, password):
+    @Slot(str, str, str)
+    def send_code_and_password(self, phone, code, password):
         try:
-            self.aioloop.run_until_complete(self.telegram_client.sign_in(code=code, password=password if password != "" else None))
+            self.aioloop.run_until_complete(self.telegram_client.sign_in(phone=phone, code=code, password=password if password != "" else None))
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
-            self.__set_aa_error(str(exc))
+            self.failed_sending_code_and_password.emit(str(exc))
         else:
-            self.auth_complete.emit()
+            self.auth_completed.emit()
