@@ -1,28 +1,17 @@
-from typing import NoReturn, Optional
+from typing import  Optional
 
-from PySide6.QtCore import QMutex, QObject, QThread, Signal, Slot
+from PySide6.QtCore import QMutex, QObject, Signal, Slot
 from telethon.sync import TelegramClient
 
-from src.gui import FruitFight2022AuthDialog
 
-
-class ClientThreadBase(QThread):
+class ClientWorker(QObject):
     mutex: QMutex
     telegram_client: Optional[TelegramClient]
 
     def __init__(self) -> None: ...
 
-
-class ClientAuthAndCreate(ClientThreadBase):
     error_happened = Signal(str)
-
-    @property
-    def client_config_window(self) -> NoReturn: ...
-
-    @client_config_window.setter
-    def client_config_window(self, value: FruitFight2022AuthDialog.ClientConfiguration) -> None: ...
-
-    def __init__(self) -> None: ...
+    client_created = Signal()
 
     def __set_error(self, message) -> None: ...
 
@@ -31,7 +20,3 @@ class ClientAuthAndCreate(ClientThreadBase):
 
     @Slot(str, str)
     def create_client_in_memory(self, api_id: str, api_hash: str) -> None: ...
-
-
-class ClientThread(ClientAuthAndCreate, ClientThreadBase):
-    pass

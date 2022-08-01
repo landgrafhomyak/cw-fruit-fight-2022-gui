@@ -1,17 +1,16 @@
-from PySide6.QtCore import QMutex, QThread, Signal, Slot
+from PySide6.QtCore import QMutex, QObject, QThread, Signal, Slot
 from telethon.sessions import MemorySession
 from telethon.sync import TelegramClient
 
 
-class ClientThreadBase(QThread):
+class ClientWorker(QObject):
+    error_happened = Signal(str)
+    client_created = Signal()
+
     def __init__(self):
         super().__init__()
         self.mutex = QMutex()
         self.telegram_client = None
-
-
-class ClientAuthAndCreate(ClientThreadBase):
-    error_happened = Signal(str)
 
     def __set_error(self, message):
         self.error_happened.emit(message)
@@ -49,7 +48,3 @@ class ClientAuthAndCreate(ClientThreadBase):
 
         finally:
             self.mutex.unlock()
-
-
-class ClientThread(ClientAuthAndCreate, ClientThreadBase):
-    pass
