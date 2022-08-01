@@ -13,6 +13,7 @@ def main(args) -> int:
     client.moveToThread(thread)
     thread.start(QThread.IdlePriority)
     window.show()
+
     return qapp.exec()
 
 
