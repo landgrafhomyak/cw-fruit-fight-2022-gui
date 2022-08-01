@@ -7,15 +7,21 @@ from src.client import ClientWorker
 class FruitFight2022MainWindow(QMainWindow):
     closed = Signal()
 
+    __client_worker: ClientWorker
     __client_config_tab: FruitFight2022ClientConfiguration
     __account_auth_tab: FruitFight2022AccountAuth
-    __client_worker: ClientWorker
+    __game_interface_tab: FruitFight2022GameInterface
 
     def __init__(self, client_worker: ClientWorker) -> None: ...
 
     @Slot
     def __on_client_created(self) -> None: ...
 
+    @Slot()
+    def re_create_client(self) -> None: ...
+
+    @Slot
+    def __on_auth_completed(self) -> None: ...
 
 class FruitFight2022ClientConfiguration(QWidget):
     __api_id_input: QLineEdit
@@ -44,11 +50,35 @@ class FruitFight2022AccountAuth(QWidget):
     __phone_button: QPushButton
     __code_label: QLabel
     __code_input: QLineEdit
-    __code_button: QPushButton
+    __change_phone: QPushButton
     __password_label: QLabel
     __password_input: QLineEdit
-    __password_button: QPushButton
+    __auth: QPushButton
     __message_label: QLabel
-    __reenter_phone_button: QPushButton
+
+    sending_phone = Signal(str)
+    sending_code_and_password = Signal(str, str)
 
     def __init__(self, parent: FruitFight2022MainWindow, client_worker: ClientWorker) -> None: ...
+
+    @Slot(str)
+    def __set_error_message(self, message: str) -> None: ...
+
+    @Slot()
+    def __send_phone(self) -> None: ...
+
+    @Slot()
+    def __on_code_request(self) -> None: ...
+
+    @Slot()
+    def __change_phone(self) -> None: ...
+
+    @Slot()
+    def __finish_auth(self) -> None: ...
+
+    @Slot()
+    def __auth_completed(self) -> None: ...
+
+
+class FruitFight2022GameInterface(QWidget):
+    pass
