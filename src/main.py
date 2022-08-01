@@ -1,11 +1,14 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from gui import FruitFight2022MainWindow
+from src.client import ClientThread
 
 
 def main(args) -> int:
     qapp = QApplication([])
-    window = FruitFight2022MainWindow()
+    thread = ClientThread()
+
+    window = FruitFight2022MainWindow(thread)
     window.show()
     return qapp.exec()
 

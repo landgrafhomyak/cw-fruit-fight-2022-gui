@@ -1,20 +1,25 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QButtonGroup, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSizePolicy, QStackedLayout, QVBoxLayout, QWidget
 
 
 class FruitFight2022MainWindow(QMainWindow):
     # __slots__ = ("client_config_tab",)
 
-    def __init__(self):
+    def __init__(self, client_thread):
         super().__init__()
         self.setWindowTitle("ChatWars Fruit fight 2022 GUI Client")
-        self.client_config_tab = FruitFight2022AuthDialog()
+        self.client_config_tab = FruitFight2022AuthDialog(client_thread)
         self.setCentralWidget(self.client_config_tab)
+        # self.closeEvent.connect(client_thread.)
 
 
 class FruitFight2022AuthDialog(QWidget):
     class ClientConfiguration(QWidget):
-        def __init__(self):
+        in_memory_client_creating = Signal(str, str)
+        file_client_creating = Signal(str, str, str)
+
+        def __init__(self, client_thread):
             super().__init__()
             self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
@@ -27,41 +32,44 @@ class FruitFight2022AuthDialog(QWidget):
             layout.addWidget(QLabel("Client configuration (<a href=\"https://my.telegram.org/apps\">https://my.telegram.org/apps</a>)", self), 0, 0, 1, 3, Qt.AlignLeft)
 
             layout.addWidget(QLabel("API ID:", self), 1, 0, Qt.AlignRight)
-            self.api_id_input = QLineEdit()
-            self.api_id_input.setEchoMode(QLineEdit.Password)
-            self.api_id_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            layout.addWidget(self.api_id_input, 1, 1, 1, 2)
+            self.__api_id_input = QLineEdit()
+            self.__api_id_input.setEchoMode(QLineEdit.Password)
+            self.__api_id_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            layout.addWidget(self.__api_id_input, 1, 1, 1, 2)
 
             layout.addWidget(QLabel("API Hash:", self), 2, 0, Qt.AlignRight)
-            self.api_hash_input = QLineEdit()
-            self.api_hash_input.setEchoMode(QLineEdit.Password)
-            self.api_hash_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            layout.addWidget(self.api_hash_input, 2, 1, 1, 2)
+            self.__api_hash_input = QLineEdit()
+            self.__api_hash_input.setEchoMode(QLineEdit.Password)
+            self.__api_hash_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            layout.addWidget(self.__api_hash_input, 2, 1, 1, 2)
 
             rb1 = QRadioButton("In-memory auth file (requires re-auth on each app launch)", self)
             rb1.setChecked(True)
             rb2 = QRadioButton("Auth file on disk (will be created if not exists)", self)
-            group = QButtonGroup()
-            group.addButton(rb1)
-            group.addButton(rb2)
+            self.__rb_group = QButtonGroup()
+            self.__rb_group.addButton(rb1, 0)
+            self.__rb_group.addButton(rb2, 1)
             rb_layout = QHBoxLayout()
             layout.addLayout(rb_layout, 3, 0, 1, 3, Qt.AlignHCenter)
             rb_layout.addWidget(rb1, alignment=Qt.AlignRight)
             rb_layout.addWidget(rb2, alignment=Qt.AlignLeft)
 
             layout.addWidget(QLabel("Path to auth file:", self), 4, 0, Qt.AlignRight)
-            self.file_input = QLineEdit(self)
-            self.file_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            self.file_input.setDisabled(True)
-            layout.addWidget(self.file_input, 4, 1)
-            self.file_input_button = QPushButton("...", self)
-            self.file_input_button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-            self.file_input_button.setDisabled(True)
-            layout.addWidget(self.file_input_button, 4, 2)
+            self.__file_input = QLineEdit(self)
+            self.__file_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            self.__file_input.setDisabled(True)
+            layout.addWidget(self.__file_input, 4, 1)
+            self.__file_input_button = QPushButton("...", self)
+            self.__file_input_button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+            self.__file_input_button.setDisabled(True)
+            layout.addWidget(self.__file_input_button, 4, 2)
 
-            self.message_label = QLabel(self)
-            self.message_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            layout.addWidget(self.message_label, 5, 0, 1, 3)
+            self.__message_label = QLabel(self)
+            _palette = QPalette()
+            _palette.setColor(QPalette.WindowText, QColor("red"))
+            self.__message_label.setPalette(_palette)
+            self.__message_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            layout.addWidget(self.__message_label, 5, 0, 1, 3)
 
             exit_button = QPushButton("Exit", self)
             create_button = QPushButton("Create client", self)
@@ -71,14 +79,38 @@ class FruitFight2022AuthDialog(QWidget):
             buttons_layout.addWidget(create_button, 0, Qt.AlignRight)
             layout.addLayout(buttons_layout, 6, 0, 1, 3)
 
-            # layout.addWidget(check_box)
+            client_thread.client_config_window = self
+            create_button.clicked.connect(self.__create_client)
+            client_thread.error_happened.connect(self.__set_error_message)
+            self.in_memory_client_creating.connect(client_thread.create_client_in_memory)
+            self.file_client_creating.connect(client_thread.create_client_with_file)
 
-    # __slots__ = ("client_config",)
+        @Slot()
+        def __create_client(self):
+            button = self.__rb_group.checkedId()
+            self.__message_label.setText("")
+            if button == 0:
+                self.in_memory_client_creating.emit(
+                    self.__api_id_input.text(),
+                    self.__api_hash_input.text()
+                )
+            elif button == 1:
+                self.file_client_creating.emit(
+                    self.__api_id_input.text(),
+                    self.__api_hash_input.text(),
+                    self.__file_input.text(),
+                )
+            else:
+                self.__set_error_message("Client storage not selected (2 radio buttons)")
 
-    def __init__(self):
+        @Slot(str)
+        def __set_error_message(self, text):
+            self.__message_label.setText(text)
+
+    def __init__(self, client_thread):
         super().__init__()
 
-        self.client_config = FruitFight2022AuthDialog.ClientConfiguration()
+        self.client_config = FruitFight2022AuthDialog.ClientConfiguration(client_thread)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.client_config)
