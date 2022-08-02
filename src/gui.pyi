@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
 from PySide6.QtWidgets import QButtonGroup, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
 
+from game import Bone
 from src.client import ClientWorker
 
 
@@ -136,18 +137,9 @@ class FruitFight2022GameInterface(QWidget):
 
     class GamePanel(QWidget):
         __stamina: FruitFight2022GameInterface.StaminaPanel
-        __bones: 'FruitFight2022GameInterface.BonesTable'
+        __hands: 'FruitFight2022GameInterface.PlayersHands'
 
         def __init__(self, parent: QWidget) -> None: ...
-
-    class BonesTable(QWidget):
-        __grid: QGridLayout
-        __users: List[QLabel]
-        __bones: List[List[QWidget]]
-
-        def __init__(self, parent: QWidget) -> None: ...
-
-        def setUser(self, index: int, name: str) -> None: ...
 
     class ChatItem:
         __cid: int
@@ -160,8 +152,7 @@ class FruitFight2022GameInterface(QWidget):
         def __init__(self, cid: int, name: str = "") -> None: ...
 
         @property
-        def cid(self):
-            return self.__cid
+        def cid(self) -> int: ...
 
         @property
         def name(self) -> str: ...
@@ -231,3 +222,40 @@ class FruitFight2022GameInterface(QWidget):
             def wheelEvent(self, event: QWheelEvent) -> None: ...
 
             def mousePressEvent(self, event: QMouseEvent) -> None: ...
+
+    class BonesRow(QWidget):
+        __data: Tuple[Bone, ...]
+
+        def __init__(self, parent: QWidget): ...
+
+        def resizeEvent(self, event: QResizeEvent) -> None: ...
+
+        def __calc_size(self, height: int) -> None: ...
+
+        @Slot(tuple)
+        def set_data(self, data: Tuple[Bone, ...]) -> None: ...
+
+        def paintEvent(self, event: QPaintEvent) -> None: ...
+
+    class TurnPointer(QWidget):
+        __is_on: bool
+
+        def __init__(self, parent: QWidget) -> None: ...
+
+        def heightForWidth(self, width: int) -> int: ...
+
+        def set(self, value: bool) -> None: ...
+
+        def paintEvent(self, event: QPaintEvent) -> None: ...
+
+    class PlayersHands(QWidget):
+        __layout: QGridLayout
+        __pointers: List[FruitFight2022GameInterface.TurnPointer]
+        __names: List[QLabel]
+        __hands: List[FruitFight2022GameInterface.BonesRow]
+
+        @Slot(int, bool, str, tuple)
+        def set_row(self, index: int, turn: bool, name: str, hand: Tuple[Bone, ...]) -> None: ...
+
+        @Slot(int)
+        def ensure_players_count(self, count: int) -> None: ...

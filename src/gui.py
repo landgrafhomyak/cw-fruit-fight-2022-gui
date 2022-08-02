@@ -2,6 +2,8 @@ from PySide6.QtCore import QAbstractListModel, QPoint, QRect, Qt, Signal, Slot
 from PySide6.QtGui import QBrush, QCloseEvent, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPalette, QPen
 from PySide6.QtWidgets import QApplication, QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
+from game import Bone
+
 
 class FruitFight2022MainWindow(QMainWindow):
     closed = Signal()
@@ -386,30 +388,13 @@ class FruitFight2022GameInterface(QWidget):
         def __init__(self, parent):
             super().__init__(parent)
             self.__stamina = FruitFight2022GameInterface.StaminaPanel(self)
-            self.__bones = FruitFight2022GameInterface.BonesTable(self)
+            self.__hands = FruitFight2022GameInterface.PlayersHands(self)
 
             layout = QVBoxLayout(self)
             self.setLayout(layout)
             layout.addWidget(self.__stamina, 0)
-            layout.addWidget(self.__bones, 0)
+            layout.addWidget(self.__hands, 0)
             layout.addStretch(1)
-
-    class BonesTable(QWidget):
-        def __init__(self, parent):
-            super().__init__(parent)
-            self.__grid = QGridLayout(self)
-            self.setLayout(self.__grid)
-            self.__users = []
-            self.__bones = []
-
-        def setUser(self, index, name):
-            if index < 0:
-                raise ValueError("Negative user index")
-            while index >= len(self.__users):
-                lbl = QLabel(self)
-                self.__users.append(lbl)
-                self.__grid.addWidget(lbl, len(self.__users) - 1, 0, Qt.AlignRight)
-            self.__users[index].setText(name)
 
     class ChatItem:
         __slots__ = ("__cid", "__name", "__is_turn", "__players_count")
@@ -489,7 +474,7 @@ class FruitFight2022GameInterface(QWidget):
 
         @Slot(int, int, int)
         def __on_canvas_scroll(self, size, page, y):
-            self.__scrollbar.setMaximum(size)
+            self.__scrollbar.setMaximum(max(size, 0))
             self.__scrollbar.setPageStep(page)
             self.__scrollbar.setValue(y)
 
@@ -617,3 +602,98 @@ class FruitFight2022GameInterface(QWidget):
                 self.__selected = i
                 self.selected.emit(self.__data[i].cid)
                 self.repaint()
+
+    class BonesRow(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+
+            self.__data = ()
+
+            self.__calc_size(0)
+
+        def resizeEvent(self, event):
+            self.__calc_size(event.size().height())
+            self.repaint()
+
+        def __calc_size(self, height):
+            self.setMinimumWidth(Bone.width(height) * len(self.__data) + len(self.__data) - 1)
+
+        @Slot(tuple)
+        def set_data(self, data) -> None:
+            if not type(data) is not tuple:
+                raise TypeError("Bones row must be tuple")
+            for bone in data:
+                if type(bone) is not Bone:
+                    raise TypeError("Bone has invalid type")
+            self.__data = data
+
+            self.__calc_size(self.height())
+            self.repaint()
+
+        def paintEvent(self, event):
+            qp = QPainter(self)
+            for i, bone in enumerate(self.__data):
+                bone.paint(qp, self.height(), Bone.width(self.height()) * i + i, 0)
+            qp.end()
+
+    class TurnPointer(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+
+            self.__is_on = False
+
+        def heightForWidth(self, width):
+            return width
+
+        def set(self, value):
+            if type(value) is not bool:
+                raise TypeError("State must be bool")
+            self.__is_on = value
+
+        def paintEvent(self, event):
+            qp = QPainter(self)
+            qp.setPen(QPen(QColor(0, 0, 0)))
+            qp.setBrush(QBrush(QColor(0, 0, 255)))
+            qp.drawEllipse(0, 0, self.width(), self.height())
+            qp.end()
+
+    class PlayersHands(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+
+            self.__layout = QGridLayout(self)
+            self.setLayout(self.__layout)
+            self.__layout.setColumnStretch(0, 0)
+            self.__layout.setColumnStretch(1, 0)
+            self.__layout.setColumnStretch(2, 1)
+
+            self.__pointers = []
+            self.__names = []
+            self.__hands = []
+
+        @Slot(int, bool, str, tuple)
+        def set_row(self, index, turn, name, hand):
+            if index < 0 or index >= len(self.__hands):
+                raise ValueError("Invalid row index")
+
+            if turn:
+                for pointer in self.__pointers:
+                    pointer.set(False)
+            self.__pointers[index].set(turn)
+            self.__names[index].setText(name)
+            self.__hands[index].set_data(hand)
+
+        @Slot(int)
+        def ensure_players_count(self, count):
+            while len(self.__hands) < count:
+                pointer = FruitFight2022GameInterface.TurnPointer(self)
+                self.__layout.addWidget(pointer, len(self.__pointers), 0)
+                pointer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                self.__pointers.append(pointer)
+                name = QLabel(self)
+                self.__layout.addWidget(name, len(self.__names), 0, Qt.AlignLeft)
+                self.__names.append(name)
+                hand = FruitFight2022GameInterface.BonesRow(self)
+                self.__layout.addWidget(hand, len(self.__hands), 0)
+                hand.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                self.__hands.append(hand)
