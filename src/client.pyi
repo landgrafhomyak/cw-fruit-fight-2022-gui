@@ -4,7 +4,10 @@ from typing import Optional, Union
 from PySide6.QtCore import QMutex, QObject, QTimerEvent, Signal, Slot
 from telethon import TelegramClient
 from telethon.sessions import MemorySession
+from telethon.tl.patched import Message
 from telethon.tl.types.auth import SentCode
+
+from game import GameState
 
 
 class ClientWorker(QObject):
@@ -46,3 +49,8 @@ class ClientWorker(QObject):
     async def __get_and_process_updates(self) -> None: ...
 
     def timerEvent(self, event: QTimerEvent) -> None: ...
+
+    chat_removing = Signal(object)
+    sending_state = Signal(object, str,  GameState)
+
+    async def __message_handler(self, message: Message) -> None: ...

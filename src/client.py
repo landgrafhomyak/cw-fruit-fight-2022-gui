@@ -5,8 +5,11 @@ import time
 import traceback
 
 from PySide6.QtCore import QObject, Signal, Slot
+from telethon.events import MessageEdited
 from telethon.sessions import MemorySession
 from telethon import TelegramClient
+
+from game import GameState
 
 _DELAY_S = 1
 
@@ -35,8 +38,10 @@ class ClientWorker(QObject):
         if not await self.telegram_client.is_user_authorized():
             return None
 
+        self.telegram_client.on(MessageEdited(from_users=5265011919))(self.__message_handler)
+
         user = await self.telegram_client.get_me()
-        return user.first_name + " " + user.last_name
+        return user.first_name if user.first_name is not None else "" + " " + user.last_name if user.last_name is not None else ""
 
     def __create_client(self, api_id, api_hash, session):
         # if not self.mutex.tryLock(5):
@@ -85,7 +90,7 @@ class ClientWorker(QObject):
     async def __send_code_and_password_async(self, phone, code, password):
         await self.telegram_client.sign_in(phone=phone, code=code, password=password if password != "" else None)
         user = await self.telegram_client.get_me()
-        return user.first_name + " " + user.last_name
+        return user.first_name if user.first_name is not None else "" + " " + user.last_name if user.last_name is not None else ""
 
     @Slot(str, str, str)
     def send_code_and_password(self, phone, code, password):
@@ -112,3 +117,17 @@ class ClientWorker(QObject):
             self.aioloop.run_until_complete(self.__get_and_process_updates())
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
+
+    chat_removing = Signal(object)
+    sending_state = Signal(object, str, GameState)
+
+    async def __message_handler(self, message):
+        state = GameState(message.raw_text)
+        if state is None:
+            return
+
+        if state.is_ended:
+            self.chat_removing.emit(message.chat_id)
+            return
+        else:
+            self.sending_state.emit(message.chat_id, message.chat.title, state)

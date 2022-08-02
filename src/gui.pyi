@@ -1,10 +1,10 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
 from PySide6.QtWidgets import QButtonGroup, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
 
-from game import Bone
+from game import Bone, GameState
 from src.client import ClientWorker
 
 
@@ -102,8 +102,23 @@ class FruitFight2022AccountAuth(QWidget):
 class FruitFight2022GameInterface(QWidget):
     __chats: 'FruitFight2022GameInterface.ChatsList'
     __game: 'FruitFight2022GameInterface.GamePanel'
+    __chats_data: Dict[int, GameState]
+    __stamina_max_cache: Dict[int, int]
+    __current_chat: Optional[int]
 
-    def __init__(self, parent: QWidget) -> None: ...
+    def __init__(self, parent: QWidget, client_worker: ClientWorker) -> None: ...
+
+    @Slot(object)
+    def __on_chat_delete(self, cid: int) -> None: ...
+
+    @Slot(object, str, GameState)
+    def __on_chat_update(self, cid: int, data: GameState) -> None: ...
+
+    @Slot(object)
+    def __on_chat_select(self, cid: int) -> None: ...
+
+    @Slot()
+    def __on_chat_unselect(self) -> None: ...
 
     class StaminaPanel(QWidget):
         __bar: FruitFight2022GameInterface.StaminaHBar
@@ -115,10 +130,8 @@ class FruitFight2022GameInterface(QWidget):
 
         def __update_label(self) -> None: ...
 
-        @Slot(int, int)
         def set_left_max(self, left: int, mx: int) -> None: ...
 
-        @Slot(int)
         def set_left(self, left: int) -> None: ...
 
     class StaminaHBar(QWidget):
@@ -140,6 +153,8 @@ class FruitFight2022GameInterface(QWidget):
         __hands: 'FruitFight2022GameInterface.PlayersHands'
 
         def __init__(self, parent: QWidget) -> None: ...
+
+        def set_data(self, data: GameState, max_stamina: int) -> None: ...
 
     class ChatItem:
         __cid: int
@@ -176,13 +191,16 @@ class FruitFight2022GameInterface(QWidget):
         __scrollbar: QScrollBar
         __canvas: 'FruitFight2022GameInterface.ChatsList.Canvas'
 
+        selected = Signal(object)
+        unselected = Signal()
+
         def __init__(self, parent) -> None: ...
 
         def move_cid_to_top(self, cid: int) -> None: ...
 
         def remove_cid(self, cid: int) -> None: ...
 
-        def add_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
+        def ensure_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
 
         @Slot(int, int, int)
         def __on_canvas_scroll(self, size: int, page: int, y: int) -> None: ...
@@ -193,14 +211,14 @@ class FruitFight2022GameInterface(QWidget):
             __y: int
             __data: List[FruitFight2022GameInterface.ChatItem]
             __selected: Optional[int]
-
+            __selected_signal: Signal
+            __unselected_signal: Signal
             scrolled = Signal(int, int, int)
-            selected = Signal(int)
 
             @property
             def items_height(self) -> int: ...
 
-            def __init__(self, parent) -> None: ...
+            def __init__(self, parent, selected_signal: Signal, unselected_signal: Signal) -> None: ...
 
             def move_cid_to_top(self, cid: int) -> None: ...
 
@@ -208,7 +226,7 @@ class FruitFight2022GameInterface(QWidget):
 
             def remove_cid(self, cid: int) -> None: ...
 
-            def add_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
+            def ensure_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
 
             def __draw_item(self, qp: QPainter, y: int, data: FruitFight2022GameInterface.ChatItem, is_selected: bool) -> None: ...
 
@@ -254,8 +272,6 @@ class FruitFight2022GameInterface(QWidget):
         __names: List[QLabel]
         __hands: List[FruitFight2022GameInterface.BonesRow]
 
-        @Slot(int, bool, str, tuple)
         def set_row(self, index: int, turn: bool, name: str, hand: Tuple[Bone, ...]) -> None: ...
 
-        @Slot(int)
         def ensure_players_count(self, count: int) -> None: ...

@@ -2,7 +2,7 @@ from PySide6.QtCore import QAbstractListModel, QPoint, QRect, Qt, Signal, Slot
 from PySide6.QtGui import QBrush, QCloseEvent, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPalette, QPen
 from PySide6.QtWidgets import QApplication, QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
-from game import Bone
+from game import Bone, GameState
 
 
 class FruitFight2022MainWindow(QMainWindow):
@@ -14,9 +14,9 @@ class FruitFight2022MainWindow(QMainWindow):
         self.setWindowTitle("ChatWars Fruit fight 2022 GUI Client")
         self.__client_config_tab = FruitFight2022ClientConfiguration(self, client_worker)
         self.__account_auth_tab = FruitFight2022AccountAuth(self, client_worker)
-        self.__game_interface_tab = FruitFight2022GameInterface(self)
-        # self.setCentralWidget(self.__client_config_tab)
-        self.setCentralWidget(self.__game_interface_tab)
+        self.__game_interface_tab = FruitFight2022GameInterface(self, client_worker)
+        self.setCentralWidget(self.__client_config_tab)
+        # self.setCentralWidget(self.__game_interface_tab)
         client_worker.client_created.connect(self.__on_client_created)
         client_worker.auth_completed.connect(self.__on_auth_completed)
 
@@ -304,7 +304,7 @@ class FruitFight2022AccountAuth(QWidget):
 
 
 class FruitFight2022GameInterface(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, client_worker):
         super().__init__(parent)
         layout = QGridLayout(self)
         self.setLayout(layout)
@@ -323,6 +323,46 @@ class FruitFight2022GameInterface(QWidget):
         self.__game.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.__game, 0, 2, 2, 1)
 
+        self.__chats_data = dict()
+        self.__stamina_max_cache = dict()
+        self.__current_chat = None
+
+        client_worker.sending_state.connect(self.__on_chat_update)
+        client_worker.chat_removing.connect(self.__on_chat_delete)
+        self.__chats.selected.connect(self.__on_chat_select)
+        self.__chats.unselected.connect(self.__on_chat_unselect)
+
+    @Slot(object)
+    def __on_chat_delete(self, cid):
+        if cid not in self.__chats_data:
+            return
+        self.__chats_data.pop(cid)
+        self.__chats.remove_cid(cid)
+        self.__stamina_max_cache.pop(cid)
+
+    @Slot(object, str, GameState)
+    def __on_chat_update(self, cid, chat_name, data):
+        self.__chats_data[cid] = data
+        self.__stamina_max_cache[cid] = max(self.__stamina_max_cache.get(cid, 0), data.stamina)
+        ci = FruitFight2022GameInterface.ChatItem(cid, chat_name)
+        ci.players_count = len(data.players)
+        self.__chats.ensure_chat(ci)
+        if cid == self.__current_chat:
+            self.__game.set_data(self.__chats_data[cid], self.__stamina_max_cache[cid])
+
+    @Slot(object)
+    def __on_chat_select(self, cid):
+        if cid not in self.__chats_data:
+            return
+        self.__game.setEnabled(True)
+        self.__game.set_data(self.__chats_data[cid], self.__stamina_max_cache[cid])
+        self.__current_chat = cid
+
+    @Slot()
+    def __on_chat_unselect(self):
+        self.__game.setEnabled(False)
+        self.__current_chat = None
+
     class StaminaPanel(QWidget):
         def __init__(self, parent):
             super().__init__(parent)
@@ -340,14 +380,12 @@ class FruitFight2022GameInterface(QWidget):
         def __update_label(self):
             self.__label.setText(str(self.__left) + "/" + str(self.__max))
 
-        @Slot(int, int)
         def set_left_max(self, left, mx):
             self.__max = max(mx, 1)
             self.__left = max(0, left)
             self.__bar.set_left_max(left, mx)
             self.__update_label()
 
-        @Slot(int)
         def set_left(self, left) -> None:
             self.__left = max(0, left)
             self.__bar.set_left(left)
@@ -375,14 +413,14 @@ class FruitFight2022GameInterface(QWidget):
                 qp.drawLine(x, 0, x, self.height() - 1)
             qp.end()
 
-        @Slot(int, int)
         def set_left_max(self, left, mx):
             self.__max = max(mx, 1)
             self.__left = max(0, left)
+            self.repaint()
 
-        @Slot(int)
         def set_left(self, left) -> None:
             self.__left = max(0, left)
+            self.repaint()
 
     class GamePanel(QWidget):
         def __init__(self, parent):
@@ -395,6 +433,12 @@ class FruitFight2022GameInterface(QWidget):
             layout.addWidget(self.__stamina, 0)
             layout.addWidget(self.__hands, 0)
             layout.addStretch(1)
+
+        def set_data(self, data, max_stamina: int):
+            self.__stamina.set_left_max(data.stamina, max_stamina)
+            self.__hands.ensure_players_count(len(data.players))
+            for i, player in enumerate(data.players):
+                self.__hands.set_row(i, player.is_turn, player.name, player.bones)
 
     class ChatItem:
         __slots__ = ("__cid", "__name", "__is_turn", "__players_count")
@@ -443,6 +487,8 @@ class FruitFight2022GameInterface(QWidget):
             self.__players_count = value
 
     class ChatsList(QWidget):
+        selected = Signal(object)
+        unselected = Signal()
 
         def __init__(self, parent):
             super().__init__(parent)
@@ -450,7 +496,7 @@ class FruitFight2022GameInterface(QWidget):
             layout = QHBoxLayout(self)
             self.setLayout(layout)
 
-            self.__canvas = FruitFight2022GameInterface.ChatsList.Canvas(self)
+            self.__canvas = FruitFight2022GameInterface.ChatsList.Canvas(self, self.selected, self.unselected)
             self.__canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             layout.addWidget(self.__canvas, 1)
 
@@ -469,8 +515,8 @@ class FruitFight2022GameInterface(QWidget):
         def remove_cid(self, cid):
             self.__canvas.remove_cid(cid)
 
-        def add_chat(self, chat):
-            self.__canvas.add_chat(chat)
+        def ensure_chat(self, chat):
+            self.__canvas.ensure_chat(chat)
 
         @Slot(int, int, int)
         def __on_canvas_scroll(self, size, page, y):
@@ -480,13 +526,12 @@ class FruitFight2022GameInterface(QWidget):
 
         class Canvas(QWidget):
             scrolled = Signal(int, int, int)
-            selected = Signal(int)
 
             @property
             def items_height(self):
                 return self.__height * len(self.__data)
 
-            def __init__(self, parent):
+            def __init__(self, parent, selected_signal, unselected_signal):
                 super().__init__(parent)
 
                 self.__data = []
@@ -494,6 +539,8 @@ class FruitFight2022GameInterface(QWidget):
                 self.__height = self.__fheight + 6
                 self.__y = 0
                 self.__selected = None
+                self.__selected_signal = selected_signal
+                self.__unselected_signal = unselected_signal
 
             def move_cid_to_top(self, cid):
                 for i, wid in enumerate(self.__data):
@@ -527,16 +574,19 @@ class FruitFight2022GameInterface(QWidget):
                         self.__data.pop(i)
                         if self.__selected > i:
                             self.__selected -= 1
+                        elif self.__selected == i:
+                            self.__selected = None
+                            self.__unselected_signal.emit()
                         break
                 else:
                     raise ValueError("Chat item with cid " + str(cid) + " not found")
 
                 self.repaint()
 
-            def add_chat(self, chat):
+            def ensure_chat(self, chat):
                 for wid in self.__data:
                     if wid.cid == chat.cid:
-                        raise ValueError("Chat item duplication")
+                        return
                 self.__data.append(chat)
                 self.repaint()
                 self.__calc_scroll()
@@ -600,7 +650,7 @@ class FruitFight2022GameInterface(QWidget):
                     return
 
                 self.__selected = i
-                self.selected.emit(self.__data[i].cid)
+                self.__selected_signal.emit(self.__data[i].cid)
                 self.repaint()
 
     class BonesRow(QWidget):
@@ -620,7 +670,7 @@ class FruitFight2022GameInterface(QWidget):
 
         @Slot(tuple)
         def set_data(self, data) -> None:
-            if not type(data) is not tuple:
+            if type(data) is not tuple:
                 raise TypeError("Bones row must be tuple")
             for bone in data:
                 if type(bone) is not Bone:
@@ -633,7 +683,7 @@ class FruitFight2022GameInterface(QWidget):
         def paintEvent(self, event):
             qp = QPainter(self)
             for i, bone in enumerate(self.__data):
-                bone.paint(qp, self.height(), Bone.width(self.height()) * i + i, 0)
+                bone.paint(qp, Bone.width(self.height()) * i + i * 2, 0, self.height())
             qp.end()
 
     class TurnPointer(QWidget):
@@ -671,7 +721,6 @@ class FruitFight2022GameInterface(QWidget):
             self.__names = []
             self.__hands = []
 
-        @Slot(int, bool, str, tuple)
         def set_row(self, index, turn, name, hand):
             if index < 0 or index >= len(self.__hands):
                 raise ValueError("Invalid row index")
@@ -683,7 +732,6 @@ class FruitFight2022GameInterface(QWidget):
             self.__names[index].setText(name)
             self.__hands[index].set_data(hand)
 
-        @Slot(int)
         def ensure_players_count(self, count):
             while len(self.__hands) < count:
                 pointer = FruitFight2022GameInterface.TurnPointer(self)
@@ -691,9 +739,9 @@ class FruitFight2022GameInterface(QWidget):
                 pointer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
                 self.__pointers.append(pointer)
                 name = QLabel(self)
-                self.__layout.addWidget(name, len(self.__names), 0, Qt.AlignLeft)
+                self.__layout.addWidget(name, len(self.__names), 1, Qt.AlignLeft)
                 self.__names.append(name)
                 hand = FruitFight2022GameInterface.BonesRow(self)
-                self.__layout.addWidget(hand, len(self.__hands), 0)
+                self.__layout.addWidget(hand, len(self.__hands), 2)
                 hand.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
                 self.__hands.append(hand)
