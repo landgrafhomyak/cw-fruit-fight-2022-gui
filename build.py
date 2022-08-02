@@ -1,5 +1,7 @@
 import os
 
+import PyInstaller.__main__
+
 res_file = open("./src/res.py", "wt")
 
 for fname in os.listdir("./res"):
@@ -14,3 +16,15 @@ for fname in os.listdir("./res"):
                 else:
                     res_file.write("\\u" + code.zfill(4))
         res_file.write("\"\n")
+
+PyInstaller.__main__.run([
+    "--distpath", "dist",
+    "--workpath", "build",
+    "--specpath", "build",
+    "--clean",
+    "--noconfirm",
+    "--onefile",
+    "--windowed",
+    "--name", "fruit-fight-2022-gui-client",
+    "./src/main.py"
+])
