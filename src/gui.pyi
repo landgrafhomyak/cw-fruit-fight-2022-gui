@@ -1,8 +1,8 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from PySide2.QtCore import Signal, Slot
 from PySide2.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
-from PySide2.QtWidgets import QButtonGroup, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
+from PySide2.QtWidgets import QButtonGroup, QCheckBox, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
 
 from game import Bone, GameState
 from src.client import ClientWorker
@@ -25,6 +25,9 @@ class FruitFight2022MainWindow(QMainWindow):
 
     @Slot()
     def __on_auth_completed(self) -> None: ...
+
+    @Slot(bool)
+    def __on_stay_on_top(self, state: bool) -> None:
 
 
 class FruitFight2022ClientConfiguration(QWidget):
@@ -104,8 +107,14 @@ class FruitFight2022GameInterface(QWidget):
     __chats_data: Dict[int, GameState]
     __stamina_max_cache: Dict[int, int]
     __current_chat: Optional[int]
+    __ingame_name: Optional[str]
+
+    staying_on_top = Signal(bool)
 
     def __init__(self, parent: QWidget, client_worker: ClientWorker) -> None: ...
+
+    @Slot(bool)
+    def __on_staying_on_top(self, state) -> None: ...
 
     @Slot(object)
     def __on_chat_delete(self, cid: int) -> None: ...
@@ -118,6 +127,9 @@ class FruitFight2022GameInterface(QWidget):
 
     @Slot()
     def __on_chat_unselect(self) -> None: ...
+
+    @Slot(str)
+    def __on_nickname_change(self, new_name: str): ...
 
     class StaminaPanel(QWidget):
         __bar: FruitFight2022GameInterface.StaminaHBar
@@ -201,6 +213,8 @@ class FruitFight2022GameInterface(QWidget):
 
         def ensure_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
 
+        def set_turn_for_chats(self, cids: Set[int]) -> None: ...
+
         @Slot(int, int, int)
         def __on_canvas_scroll(self, size: int, page: int, y: int) -> None: ...
 
@@ -224,6 +238,8 @@ class FruitFight2022GameInterface(QWidget):
             def paintEvent(self, event: QPaintEvent) -> None: ...
 
             def remove_cid(self, cid: int) -> None: ...
+
+            def set_turn_for_chats(self, cids: Set[int]) -> None: ...
 
             def ensure_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
 
@@ -259,6 +275,8 @@ class FruitFight2022GameInterface(QWidget):
 
         def __init__(self, parent: QWidget) -> None: ...
 
+        def resizeEvent(self, event: QResizeEvent) -> None: ...
+
         def heightForWidth(self, width: int) -> int: ...
 
         def set(self, value: bool) -> None: ...
@@ -274,3 +292,18 @@ class FruitFight2022GameInterface(QWidget):
         def set_row(self, index: int, turn: bool, name: str, hand: Tuple[Bone, ...]) -> None: ...
 
         def ensure_players_count(self, count: int) -> None: ...
+
+    class ConfigPanel(QWidget):
+        __stay_on_top: QCheckBox
+        __nickname_input: QLineEdit
+
+        staying_on_top = Signal(bool)
+        setting_ingame_name = Signal(str)
+
+        def __init__(self, parent: QWidget) -> None: ...
+
+        @Slot()
+        def __on_top(self) -> None: ...
+
+        @Slot()
+        def __on_name_apply(self) -> None: ...
