@@ -4,7 +4,7 @@ import sys
 import time
 import traceback
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide2.QtCore import QObject, Signal, Slot
 from telethon.events import MessageEdited
 from telethon.sessions import MemorySession
 from telethon import TelegramClient

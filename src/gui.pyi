@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Signal, Slot
-from PySide6.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
-from PySide6.QtWidgets import QButtonGroup, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
+from PySide2.QtCore import Signal, Slot
+from PySide2.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
+from PySide2.QtWidgets import QButtonGroup, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
 
 from game import Bone, GameState
 from src.client import ClientWorker
@@ -18,13 +18,12 @@ class FruitFight2022MainWindow(QMainWindow):
 
     def __init__(self, client_worker: ClientWorker) -> None: ...
 
-    @Slot
+    @Slot()
     def __on_client_created(self) -> None: ...
 
-    @Slot()
-    def re_create_client(self) -> None: ...
+    def closeEvent(self, event=None) -> None: ...
 
-    @Slot
+    @Slot()
     def __on_auth_completed(self) -> None: ...
 
 
@@ -45,7 +44,7 @@ class FruitFight2022ClientConfiguration(QWidget):
     in_memory_client_creating = Signal(str, str)
     file_client_creating = Signal(str, str, str)
 
-    def __init__(self, parent: FruitFight2022MainWindow, client_worker: ClientWorker) -> None: ...
+    def __init__(self, parent: QWidget, client_worker: ClientWorker) -> None: ...
 
     @Slot()
     def __create_client(self): ...
@@ -75,7 +74,7 @@ class FruitFight2022AccountAuth(QWidget):
     sending_phone = Signal(str)
     sending_code_and_password = Signal(str, str)
 
-    def __init__(self, parent: FruitFight2022MainWindow, client_worker: ClientWorker) -> None: ...
+    def __init__(self, parent: QWidget, client_worker: ClientWorker) -> None: ...
 
     @Slot(str)
     def __on_send_phone_failed(self, message) -> None: ...

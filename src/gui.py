@@ -1,6 +1,6 @@
-from PySide6.QtCore import QAbstractListModel, QPoint, QRect, Qt, Signal, Slot
-from PySide6.QtGui import QBrush, QCloseEvent, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPalette, QPen
-from PySide6.QtWidgets import QApplication, QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy, QToolButton, QVBoxLayout, QWidget
+from PySide2.QtCore import QPoint, QRect, Qt, Signal, Slot
+from PySide2.QtGui import QBrush, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPalette, QPen, QTextOption
+from PySide2.QtWidgets import QApplication, QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollBar, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
 from game import Bone, GameState
 
@@ -23,10 +23,6 @@ class FruitFight2022MainWindow(QMainWindow):
     @Slot()
     def __on_client_created(self):
         self.setCentralWidget(self.__account_auth_tab)
-
-    @Slot()
-    def re_create_client(self):
-        self.setCentralWidget(self.__client_config_tab)
 
     def closeEvent(self, event=None):
         QApplication.exit(0)
@@ -97,15 +93,9 @@ class FruitFight2022ClientConfiguration(QWidget):
         self.__message_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self.__message_label, 5, 0, 1, 3)
 
-        exit_button = QPushButton("Exit", self)
         self.__create_client_button = QPushButton("Create client", self)
-        buttons_layout = QHBoxLayout(self)
-        buttons_layout.addWidget(exit_button, 0, Qt.AlignLeft)
-        buttons_layout.addStretch(1)
-        buttons_layout.addWidget(self.__create_client_button, 0, Qt.AlignRight)
-        layout.addLayout(buttons_layout, 6, 0, 1, 3)
+        layout.addWidget(self.__create_client_button, 6, 0, 1, 3, Qt.AlignRight)
 
-        exit_button.clicked.connect(parent.close)
         self.__create_client_button.clicked.connect(self.__create_client)
         client_worker.failed_creating_client.connect(self.__on_client_creation_fail)
         self.in_memory_client_creating.connect(client_worker.create_client_in_memory)
@@ -224,13 +214,12 @@ class FruitFight2022AccountAuth(QWidget):
         self.__message_label.setPalette(_palette)
         self.__message_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self.__message_label, 3, 0, 1, 3)
-
-        prev_button = QPushButton("Back", self)
-        layout.addWidget(prev_button, 4, 0, 1, 3, Qt.AlignLeft)
+        #
+        # prev_button = QPushButton("Back", self)
+        # layout.addWidget(prev_button, 4, 0, 1, 3, Qt.AlignLeft)
 
         client_worker.failed_sending_phone.connect(self.__on_send_phone_failed)
         client_worker.failed_sending_code_and_password.connect(self.__on_send_code_and_password_failed)
-        prev_button.clicked.connect(parent.re_create_client)
         client_worker.requesting_code.connect(self.__on_code_request)
         self.sending_phone.connect(client_worker.send_phone)
         self.__phone_button.clicked.connect(self.__send_phone)
@@ -407,7 +396,7 @@ class FruitFight2022GameInterface(QWidget):
             qp.setPen(QPen(QColor(0, 0, 0)))
             qp.drawRect(0, 0, self.width() - 1, self.height() - 1)
             qp.setBrush(QBrush(QColor(0, 255, 0)))
-            qp.drawRect(0, 0, self.width() * self.__left // self.__max, self.height() - 1)
+            qp.drawRect(0, 0, (self.width() - 1) * self.__left // self.__max, self.height() - 1)
             for i in range(1, self.__max):
                 x = self.width() * i // self.__max
                 qp.drawLine(x, 0, x, self.height() - 1)
@@ -603,7 +592,10 @@ class FruitFight2022GameInterface(QWidget):
                 qp.drawRect(0, y, self.width(), self.__height)
                 qp.setPen(QPen(QColor(0, 0, 0)))
                 margin = (self.__height - self.__fheight) // 2
-                qp.drawText(QPoint(margin, y + margin + self.__fheight), data.name)
+                to = QTextOption(Qt.AlignVCenter)
+                to.setWrapMode(QTextOption.NoWrap)
+                qp.drawText(QRect(margin, y + margin, self.width(), self.__fheight), data.name, to)
+                del to
                 r = QRect(self.width() - 20 - 10 * data.players_count, y, 15, self.__height)
                 gradient = QLinearGradient(r.bottomLeft(), r.topRight())
                 gradient.setStart(r.bottomLeft())
@@ -685,7 +677,7 @@ class FruitFight2022GameInterface(QWidget):
         def paintEvent(self, event):
             qp = QPainter(self)
             for i, bone in enumerate(self.__data):
-                bone.paint(qp, Bone.width(self.height()) * i + i * 2, 0, self.height())
+                bone.paint(qp, Bone.width(self.height() - 1) * i + i * 2, 0, self.height() - 1)
             qp.end()
 
     class TurnPointer(QWidget):

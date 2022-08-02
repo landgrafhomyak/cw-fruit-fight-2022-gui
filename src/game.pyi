@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 
-from PySide6.QtGui import QPainter
-from PySide6.QtSvg import QSvgRenderer
+from PySide2.QtGui import QPainter
+from PySide2.QtSvg import QSvgRenderer
 
 
 class Fruit:

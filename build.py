@@ -23,6 +23,6 @@ PyInstaller.__main__.run([
     "--noconfirm",
     "--onefile",
     "--windowed",
-    "--name", "fruit-fight-2022-gui-client",
+    "--name", "cw-fruit-fight-2022-gui-client",
     "./src/main.py"
 ])

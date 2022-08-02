@@ -1,5 +1,5 @@
-from PySide6.QtCore import QThread
-from PySide6.QtWidgets import QApplication
+from PySide2.QtCore import QThread
+from PySide2.QtWidgets import QApplication
 
 from gui import FruitFight2022MainWindow
 from client import ClientWorker
@@ -14,7 +14,7 @@ def main(args) -> int:
     thread.start(QThread.IdlePriority)
     window.show()
 
-    return qapp.exec()
+    return qapp.exec_()
 
 
 if __name__ == "__main__":

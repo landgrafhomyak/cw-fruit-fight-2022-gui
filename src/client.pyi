@@ -1,7 +1,7 @@
 from asyncio import AbstractEventLoop
 from typing import Optional, Union
 
-from PySide6.QtCore import QMutex, QObject, QTimerEvent, Signal, Slot
+from PySide2.QtCore import QMutex, QObject, QTimerEvent, Signal, Slot
 from telethon import TelegramClient
 from telethon.sessions import MemorySession
 from telethon.tl.patched import Message
