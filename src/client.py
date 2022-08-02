@@ -1,10 +1,14 @@
 import asyncio
+import math
 import sys
+import time
 import traceback
 
-from PySide6.QtCore import QMutex, QObject, Signal, Slot
-from telethon.sessions import MemorySession, SQLiteSession
+from PySide6.QtCore import QObject, Signal, Slot
+from telethon.sessions import MemorySession
 from telethon import TelegramClient
+
+_DELAY_S = 1
 
 
 class ClientWorker(QObject):
@@ -13,10 +17,11 @@ class ClientWorker(QObject):
         # self.mutex = QMutex()
         self.aioloop = None
         self.telegram_client = None
+        self.auth_completed.connect(self.__start_receiving_updates)
 
     failed_creating_client = Signal(str)
     client_created = Signal()
-    auth_completed = Signal()
+    auth_completed = Signal(str)
 
     async def __create_client_async(self, api_id, api_hash, session):
         self.telegram_client = TelegramClient(
@@ -24,9 +29,14 @@ class ClientWorker(QObject):
             api_id=api_id,
             api_hash=api_hash,
             loop=self.aioloop,
+            receive_updates=False
         )
         await self.telegram_client.connect()
-        return await self.telegram_client.is_user_authorized()
+        if not await self.telegram_client.is_user_authorized():
+            return None
+
+        user = await self.telegram_client.get_me()
+        return user.first_name + " " + user.last_name
 
     def __create_client(self, api_id, api_hash, session):
         # if not self.mutex.tryLock(5):
@@ -36,7 +46,7 @@ class ClientWorker(QObject):
             if self.aioloop is None:
                 self.aioloop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self.aioloop)
-            authorized = self.aioloop.run_until_complete(self.__create_client_async(api_id, api_hash, session))
+            full_name = self.aioloop.run_until_complete(self.__create_client_async(api_id, api_hash, session))
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
             self.failed_creating_client.emit(str(exc))
@@ -44,8 +54,8 @@ class ClientWorker(QObject):
         # finally:
         #     self.mutex.unlock()
 
-        if authorized:
-            self.auth_completed.emit()
+        if full_name is not None:
+            self.auth_completed.emit(full_name)
         else:
             self.client_created.emit()
 
@@ -72,12 +82,33 @@ class ClientWorker(QObject):
         else:
             self.requesting_code.emit()
 
+    async def __send_code_and_password_async(self, phone, code, password):
+        await self.telegram_client.sign_in(phone=phone, code=code, password=password if password != "" else None)
+        user = await self.telegram_client.get_me()
+        return user.first_name + " " + user.last_name
+
     @Slot(str, str, str)
     def send_code_and_password(self, phone, code, password):
         try:
-            self.aioloop.run_until_complete(self.telegram_client.sign_in(phone=phone, code=code, password=password if password != "" else None))
+            full_name = self.aioloop.run_until_complete(self.__send_code_and_password_async(phone, code, password))
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
             self.failed_sending_code_and_password.emit(str(exc))
         else:
-            self.auth_completed.emit()
+            self.auth_completed.emit(full_name)
+
+    @Slot()
+    def __start_receiving_updates(self):
+        self.startTimer(math.ceil(_DELAY_S * 1000))
+
+    @staticmethod
+    async def __get_and_process_updates():
+        end_time = time.time() + _DELAY_S - 0.1
+        while time.time() < end_time:
+            await asyncio.sleep(0)
+
+    def timerEvent(self, event):
+        try:
+            self.aioloop.run_until_complete(self.__get_and_process_updates())
+        except Exception as exc:
+            traceback.print_exception(exc, file=sys.stderr)

@@ -1,7 +1,7 @@
 from asyncio import AbstractEventLoop
 from typing import Optional, Union
 
-from PySide6.QtCore import QMutex, QObject, Signal, Slot
+from PySide6.QtCore import QMutex, QObject, QTimerEvent, Signal, Slot
 from telethon import TelegramClient
 from telethon.sessions import MemorySession
 from telethon.tl.types.auth import SentCode
@@ -18,7 +18,7 @@ class ClientWorker(QObject):
     client_created = Signal()
     auth_completed = Signal()
 
-    async def __create_client_async(self, api_id: str, api_hash: str, session: Union[str, MemorySession]) -> None: ...
+    async def __create_client_async(self, api_id: str, api_hash: str, session: Union[str, MemorySession]) -> Optional[str]: ...
 
     def __create_client(self, api_id: str, api_hash: str, session: Union[str, MemorySession]) -> None: ...
 
@@ -35,5 +35,14 @@ class ClientWorker(QObject):
     @Slot(str)
     def send_phone(self, phone) -> None: ...
 
+    async def __send_code_and_password_async(self, phone, code, password) -> str: ...
+
     @Slot(str, str, str)
     def send_code_and_password(self, phone, code, password) -> None: ...
+
+    @Slot()
+    def __start_receiving_updates(self) -> None: ...
+
+    async def __get_and_process_updates(self) -> None: ...
+
+    def timerEvent(self, event: QTimerEvent) -> None: ...

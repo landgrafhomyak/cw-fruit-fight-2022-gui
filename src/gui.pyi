@@ -1,5 +1,8 @@
+from typing import List, Optional
+
 from PySide6.QtCore import Signal, Slot
-from PySide6.QtWidgets import QButtonGroup, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QToolButton, QWidget
+from PySide6.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
+from PySide6.QtWidgets import QButtonGroup, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
 
 from src.client import ClientWorker
 
@@ -96,4 +99,135 @@ class FruitFight2022AccountAuth(QWidget):
 
 
 class FruitFight2022GameInterface(QWidget):
-    pass
+    __chats: 'FruitFight2022GameInterface.ChatsList'
+    __game: 'FruitFight2022GameInterface.GamePanel'
+
+    def __init__(self, parent: QWidget) -> None: ...
+
+    class StaminaPanel(QWidget):
+        __bar: FruitFight2022GameInterface.StaminaHBar
+        __label: QLabel
+        __left: int
+        __max: int
+
+        def __init__(self, parent: QWidget) -> None: ...
+
+        def __update_label(self) -> None: ...
+
+        @Slot(int, int)
+        def set_left_max(self, left: int, mx: int) -> None: ...
+
+        @Slot(int)
+        def set_left(self, left: int) -> None: ...
+
+    class StaminaHBar(QWidget):
+        __left: int
+        __max: int
+
+        def __init__(self, parent: QWidget) -> None: ...
+
+        def paintEvent(self, event: QPaintEvent) -> None: ...
+
+        @Slot(int, int)
+        def set_left_max(self, left: int, mx: int) -> None: ...
+
+        @Slot(int)
+        def set_left(self, left: int) -> None: ...
+
+    class GamePanel(QWidget):
+        __stamina: FruitFight2022GameInterface.StaminaPanel
+        __bones: 'FruitFight2022GameInterface.BonesTable'
+
+        def __init__(self, parent: QWidget) -> None: ...
+
+    class BonesTable(QWidget):
+        __grid: QGridLayout
+        __users: List[QLabel]
+        __bones: List[List[QWidget]]
+
+        def __init__(self, parent: QWidget) -> None: ...
+
+        def setUser(self, index: int, name: str) -> None: ...
+
+    class ChatItem:
+        __cid: int
+        __name: str
+        __is_turn: bool
+        __players_count: int
+
+        __slots__ = ...
+
+        def __init__(self, cid: int, name: str = "") -> None: ...
+
+        @property
+        def cid(self):
+            return self.__cid
+
+        @property
+        def name(self) -> str: ...
+
+        @name.setter
+        def name(self, value: str) -> None: ...
+
+        @property
+        def is_turn(self) -> bool: ...
+
+        @is_turn.setter
+        def is_turn(self, value: bool) -> None: ...
+
+        @property
+        def players_count(self) -> int: ...
+
+        @players_count.setter
+        def players_count(self, value: int) -> None: ...
+
+    class ChatsList(QWidget):
+        __scrollbar: QScrollBar
+        __canvas: 'FruitFight2022GameInterface.ChatsList.Canvas'
+
+        def __init__(self, parent) -> None: ...
+
+        def move_cid_to_top(self, cid: int) -> None: ...
+
+        def remove_cid(self, cid: int) -> None: ...
+
+        def add_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
+
+        @Slot(int, int, int)
+        def __on_canvas_scroll(self, size: int, page: int, y: int) -> None: ...
+
+        class Canvas(QWidget):
+            __height: int
+            __fheight: int
+            __y: int
+            __data: List[FruitFight2022GameInterface.ChatItem]
+            __selected: Optional[int]
+
+            scrolled = Signal(int, int, int)
+            selected = Signal(int)
+
+            @property
+            def items_height(self) -> int: ...
+
+            def __init__(self, parent) -> None: ...
+
+            def move_cid_to_top(self, cid: int) -> None: ...
+
+            def paintEvent(self, event: QPaintEvent) -> None: ...
+
+            def remove_cid(self, cid: int) -> None: ...
+
+            def add_chat(self, chat: FruitFight2022GameInterface.ChatItem) -> None: ...
+
+            def __draw_item(self, qp: QPainter, y: int, data: FruitFight2022GameInterface.ChatItem, is_selected: bool) -> None: ...
+
+            def __calc_scroll(self) -> None: ...
+
+            @Slot(int)
+            def on_bar_scroll(self, y: int) -> None: ...
+
+            def resizeEvent(self, event: QResizeEvent) -> None: ...
+
+            def wheelEvent(self, event: QWheelEvent) -> None: ...
+
+            def mousePressEvent(self, event: QMouseEvent) -> None: ...

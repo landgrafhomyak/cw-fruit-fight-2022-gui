@@ -1,6 +1,6 @@
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QCloseEvent, QColor, QPalette
-from PySide6.QtWidgets import QApplication, QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSizePolicy, QToolButton, QWidget
+from PySide6.QtCore import QAbstractListModel, QPoint, QRect, Qt, Signal, Slot
+from PySide6.QtGui import QBrush, QCloseEvent, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPalette, QPen
+from PySide6.QtWidgets import QApplication, QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
 
 class FruitFight2022MainWindow(QMainWindow):
@@ -13,7 +13,8 @@ class FruitFight2022MainWindow(QMainWindow):
         self.__client_config_tab = FruitFight2022ClientConfiguration(self, client_worker)
         self.__account_auth_tab = FruitFight2022AccountAuth(self, client_worker)
         self.__game_interface_tab = FruitFight2022GameInterface(self)
-        self.setCentralWidget(self.__client_config_tab)
+        # self.setCentralWidget(self.__client_config_tab)
+        self.setCentralWidget(self.__game_interface_tab)
         client_worker.client_created.connect(self.__on_client_created)
         client_worker.auth_completed.connect(self.__on_auth_completed)
 
@@ -301,4 +302,318 @@ class FruitFight2022AccountAuth(QWidget):
 
 
 class FruitFight2022GameInterface(QWidget):
-    pass
+    def __init__(self, parent):
+        super().__init__(parent)
+        layout = QGridLayout(self)
+        self.setLayout(layout)
+
+        layout.setColumnStretch(0, 0)
+        layout.setColumnStretch(1, 1)
+        layout.setColumnStretch(2, 2)
+        layout.setRowStretch(0, 1)
+        layout.setRowStretch(1, 0)
+
+        self.__chats = FruitFight2022GameInterface.ChatsList(self)
+        self.__chats.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.__chats, 0, 1)
+
+        self.__game = FruitFight2022GameInterface.GamePanel(self)
+        self.__game.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.__game, 0, 2, 2, 1)
+
+    class StaminaPanel(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+
+            self.__label = QLabel(self)
+            self.__bar = FruitFight2022GameInterface.StaminaHBar(self)
+            self.__bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+            self.set_left_max(0, 1)
+
+            layout = QHBoxLayout(self)
+            layout.addWidget(self.__label, 0)
+            layout.addWidget(self.__bar, 1)
+
+        def __update_label(self):
+            self.__label.setText(str(self.__left) + "/" + str(self.__max))
+
+        @Slot(int, int)
+        def set_left_max(self, left, mx):
+            self.__max = max(mx, 1)
+            self.__left = max(0, left)
+            self.__bar.set_left_max(left, mx)
+            self.__update_label()
+
+        @Slot(int)
+        def set_left(self, left) -> None:
+            self.__left = max(0, left)
+            self.__bar.set_left(left)
+            self.__update_label()
+
+    class StaminaHBar(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+
+            self.setMinimumHeight(3)
+            self.setMinimumWidth(3)
+
+            self.__max = 1
+            self.__left = 0
+
+        def paintEvent(self, event) -> None:
+            qp = QPainter(self)
+            qp.setBrush(QBrush(QColor(0, 127, 0)))
+            qp.setPen(QPen(QColor(0, 0, 0)))
+            qp.drawRect(0, 0, self.width() - 1, self.height() - 1)
+            qp.setBrush(QBrush(QColor(0, 255, 0)))
+            qp.drawRect(0, 0, self.width() * self.__left // self.__max, self.height() - 1)
+            for i in range(1, self.__max):
+                x = self.width() * i // self.__max
+                qp.drawLine(x, 0, x, self.height() - 1)
+            qp.end()
+
+        @Slot(int, int)
+        def set_left_max(self, left, mx):
+            self.__max = max(mx, 1)
+            self.__left = max(0, left)
+
+        @Slot(int)
+        def set_left(self, left) -> None:
+            self.__left = max(0, left)
+
+    class GamePanel(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+            self.__stamina = FruitFight2022GameInterface.StaminaPanel(self)
+            self.__bones = FruitFight2022GameInterface.BonesTable(self)
+
+            layout = QVBoxLayout(self)
+            self.setLayout(layout)
+            layout.addWidget(self.__stamina, 0)
+            layout.addWidget(self.__bones, 0)
+            layout.addStretch(1)
+
+    class BonesTable(QWidget):
+        def __init__(self, parent):
+            super().__init__(parent)
+            self.__grid = QGridLayout(self)
+            self.setLayout(self.__grid)
+            self.__users = []
+            self.__bones = []
+
+        def setUser(self, index, name):
+            if index < 0:
+                raise ValueError("Negative user index")
+            while index >= len(self.__users):
+                lbl = QLabel(self)
+                self.__users.append(lbl)
+                self.__grid.addWidget(lbl, len(self.__users) - 1, 0, Qt.AlignRight)
+            self.__users[index].setText(name)
+
+    class ChatItem:
+        __slots__ = ("__cid", "__name", "__is_turn", "__players_count")
+
+        def __init__(self, cid, name=""):
+
+            self.__cid = cid
+            self.__name = name
+            self.__is_turn = False
+            self.__players_count = 0
+
+        @property
+        def cid(self):
+            return self.__cid
+
+        @property
+        def name(self):
+            return self.__name
+
+        @name.setter
+        def name(self, value):
+            if type(value) is not str:
+                raise TypeError("Chat name must be str")
+            self.__name = value
+
+        @property
+        def is_turn(self):
+            return self.__is_turn
+
+        @is_turn.setter
+        def is_turn(self, value):
+            if type(value) is not bool:
+                raise TypeError("Property 'is_turn' must be bool")
+            self.__is_turn = value
+
+        @property
+        def players_count(self):
+            return self.__players_count
+
+        @players_count.setter
+        def players_count(self, value):
+            if type(value) is not int:
+                raise TypeError("Player count must be int")
+            if value <= 0:
+                raise ValueError("Player count must be positive")
+            self.__players_count = value
+
+    class ChatsList(QWidget):
+
+        def __init__(self, parent):
+            super().__init__(parent)
+
+            layout = QHBoxLayout(self)
+            self.setLayout(layout)
+
+            self.__canvas = FruitFight2022GameInterface.ChatsList.Canvas(self)
+            self.__canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            layout.addWidget(self.__canvas, 1)
+
+            self.__scrollbar = QScrollBar(self)
+            self.__scrollbar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+            self.__scrollbar.setMinimum(0)
+            self.__scrollbar.setSingleStep(10)
+            layout.addWidget(self.__scrollbar, 0)
+
+            self.__canvas.scrolled.connect(self.__on_canvas_scroll)
+            self.__scrollbar.valueChanged.connect(self.__canvas.on_bar_scroll)
+
+        def move_cid_to_top(self, cid):
+            self.__canvas.move_cid_to_top(cid)
+
+        def remove_cid(self, cid):
+            self.__canvas.remove_cid(cid)
+
+        def add_chat(self, chat):
+            self.__canvas.add_chat(chat)
+
+        @Slot(int, int, int)
+        def __on_canvas_scroll(self, size, page, y):
+            self.__scrollbar.setMaximum(size)
+            self.__scrollbar.setPageStep(page)
+            self.__scrollbar.setValue(y)
+
+        class Canvas(QWidget):
+            scrolled = Signal(int, int, int)
+            selected = Signal(int)
+
+            @property
+            def items_height(self):
+                return self.__height * len(self.__data)
+
+            def __init__(self, parent):
+                super().__init__(parent)
+
+                self.__data = []
+                self.__fheight = QFontMetrics(QFont().defaultFamily()).height()
+                self.__height = self.__fheight + 6
+                self.__y = 0
+                self.__selected = None
+
+            def move_cid_to_top(self, cid):
+                for i, wid in enumerate(self.__data):
+                    if wid.cid == cid:
+                        self.__data = [wid] + self.__data[:i] + self.__data[i + 1:]
+                        if self.__selected < i:
+                            self.__selected += 1
+                        elif self.__selected == i:
+                            self.__selected = 0
+                        break
+                else:
+                    raise ValueError("Chat item with cid " + str(cid) + " not found")
+
+                self.repaint()
+
+            def paintEvent(self, event):
+                i = self.__y // self.__height
+                y = self.__height * i - self.__y
+                qp = QPainter(self)
+                while y < self.height():
+                    if i >= len(self.__data):
+                        break
+                    self.__draw_item(qp, y, self.__data[i], self.__selected is not None and self.__selected == i)
+                    y += self.__height
+                    i += 1
+                qp.end()
+
+            def remove_cid(self, cid):
+                for i, wid in enumerate(self.__data):
+                    if wid.cid == cid:
+                        self.__data.pop(i)
+                        if self.__selected > i:
+                            self.__selected -= 1
+                        break
+                else:
+                    raise ValueError("Chat item with cid " + str(cid) + " not found")
+
+                self.repaint()
+
+            def add_chat(self, chat):
+                for wid in self.__data:
+                    if wid.cid == chat.cid:
+                        raise ValueError("Chat item duplication")
+                self.__data.append(chat)
+                self.repaint()
+                self.__calc_scroll()
+
+            def __draw_item(self, qp, y, data, is_selected):
+                if data.is_turn:
+                    background = QColor(100, 100, 255)
+                else:
+                    background = QColor(200, 200, 255)
+                qp.setBrush(QBrush(background))
+                qp.setPen(Qt.NoPen)
+                qp.drawRect(0, y, self.width(), self.__height)
+                qp.setPen(QPen(QColor(0, 0, 0)))
+                margin = (self.__height - self.__fheight) // 2
+                qp.drawText(QPoint(margin, y + margin + self.__fheight), data.name)
+                r = QRect(self.width() - 20 - 10 * data.players_count, y, 15, self.__height)
+                gradient = QLinearGradient(r.bottomLeft(), r.topRight())
+                gradient.setStart(r.bottomLeft())
+                gradient.setFinalStop(r.bottomRight())
+                gradient.setColorAt(0, QColor(background.red(), background.green(), background.blue(), 0))
+                gradient.setColorAt(1, background)
+                qp.fillRect(r, gradient)
+                del r, gradient
+                qp.fillRect(self.width() - 5 - 10 * data.players_count, y, 10 * data.players_count + 5, self.__height, background)
+                qp.setBrush(QBrush(QColor(255, 255, 0)))
+                point_h_center = self.__height // 2 + y
+                for x in range(self.width() - 5, self.width() - 5 - 10 * data.players_count, -10):
+                    qp.drawPolygon((QPoint(x - 4, point_h_center - 7), QPoint(x, point_h_center), QPoint(x - 4, point_h_center + 7), QPoint(x - 8, point_h_center)))
+                del point_h_center
+                if is_selected:
+                    r = QRect(self.width() - 25, y, 25, self.__height)
+                    gradient = QLinearGradient(r.bottomLeft(), r.topRight())
+                    gradient.setStart(r.bottomLeft())
+                    gradient.setFinalStop(r.bottomRight())
+                    gradient.setColorAt(0, QColor(background.red(), background.green(), background.blue(), 0))
+                    gradient.setColorAt(0.8, QColor(255, 0, 0))
+                    gradient.setColorAt(1, QColor(255, 0, 0))
+                    qp.fillRect(r, gradient)
+                    del r, gradient
+                qp.drawLine(0, y, self.width(), y)
+                qp.drawLine(0, y + self.__height, self.width(), y + self.__height)
+
+            def __calc_scroll(self):
+                self.scrolled.emit(self.__height * len(self.__data) - self.height(), self.height(), self.__y)
+
+            @Slot(int)
+            def on_bar_scroll(self, y):
+                self.__y = max(y, 0)
+                self.repaint()
+
+            def resizeEvent(self, event):
+                self.__calc_scroll()
+
+            def wheelEvent(self, event):
+                self.__y = max(0, self.__y - event.angleDelta().y())
+                self.__calc_scroll()
+
+            def mousePressEvent(self, event):
+                i = (event.y() + self.__y) // self.__height
+                if i >= len(self.__data):
+                    return
+
+                self.__selected = i
+                self.selected.emit(self.__data[i].cid)
+                self.repaint()
