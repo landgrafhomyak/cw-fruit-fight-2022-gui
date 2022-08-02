@@ -3,7 +3,7 @@ import re
 from PySide6.QtCore import QByteArray, QRect, Qt
 from PySide6.QtGui import QColor, QPen
 from PySide6.QtSvg import QSvgRenderer
-from res import *
+from res import svg_apple, svg_banana, svg_cherry, svg_lemon, svg_orange, svg_pineapple, svg_watermelon
 
 
 class Fruit:

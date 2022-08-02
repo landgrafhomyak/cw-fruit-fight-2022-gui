@@ -2,7 +2,7 @@ from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication
 
 from gui import FruitFight2022MainWindow
-from src.client import ClientWorker
+from client import ClientWorker
 
 
 def main(args) -> int:
@@ -20,4 +20,4 @@ def main(args) -> int:
 if __name__ == "__main__":
     import sys
 
-    exit(main(sys.argv))
+    sys.exit(main(sys.argv))

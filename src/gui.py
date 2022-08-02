@@ -378,7 +378,7 @@ class FruitFight2022GameInterface(QWidget):
             layout.addWidget(self.__bar, 1)
 
         def __update_label(self):
-            self.__label.setText(str(self.__left) + "/" + str(self.__max))
+            self.__label.setText("Stamina: " + str(self.__left) + "/" + str(self.__max))
 
         def set_left_max(self, left, mx):
             self.__max = max(mx, 1)
@@ -541,6 +541,8 @@ class FruitFight2022GameInterface(QWidget):
                 self.__selected = None
                 self.__selected_signal = selected_signal
                 self.__unselected_signal = unselected_signal
+                self.setMinimumWidth(50)
+                self.setMinimumHeight(self.__height)
 
             def move_cid_to_top(self, cid):
                 for i, wid in enumerate(self.__data):
