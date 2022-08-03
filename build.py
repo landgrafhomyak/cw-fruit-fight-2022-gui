@@ -24,5 +24,9 @@ PyInstaller.__main__.run([
     "--onefile",
     "--windowed",
     "--name", "cw-fruit-fight-2022-gui-client",
+    "--exclude-module", "pyinstaller",
+    "--exclude-module", "setuptools",
+    "--exclude-module", "pip",
+    "--exclude-module", "cython",
     "./src/main.py"
 ])
