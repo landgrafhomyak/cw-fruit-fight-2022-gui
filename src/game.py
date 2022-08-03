@@ -73,16 +73,39 @@ _pattern_3 = re.compile(r"\[([^\]]+)\]")
 _pattern_4 = re.compile("|".join(map(lambda f: f.emoji, (Fruit.Apple, Fruit.Banana, Fruit.Cherry, Fruit.Lemon, Fruit.Orange, Fruit.Pineapple, Fruit.Watermelon))))
 
 
-class GameState:
-    __slots__ = ("__is_ended", "__stamina", "__players", "__table")
+class ButtonWithBone(Bone):
+    __slots__ = ("__button",)
 
-    def __new__(cls, raw_text):
+    def __init__(self, left, right, button):
+        super().__init__(left, right)
+        self.__button = button
+
+    @property
+    def button(self):
+        return self.__button
+
+
+class SkipTurnButton:
+    __slots__ = ("__button",)
+
+    def __init__(self, button):
+        self.__button = button
+
+    @property
+    def button(self):
+        return self.__button
+
+
+class GameState:
+    __slots__ = ("__is_ended", "__stamina", "__players", "__table", "__buttons")
+
+    def __new__(cls, raw_text, buttons):
         m1 = _pattern_1.search(raw_text)
         if m1 is None:
             return None
 
         self = super().__new__(cls)
-        self.__is_ended = m1.group(1) == "ended"
+        self.__is_ended = m1.group(1) == "ended" or buttons is None
         self.__stamina = int(m1.group(2))
 
         m2s = _pattern_2.findall(m1.group(3))
@@ -99,6 +122,29 @@ class GameState:
 
         self.__players = tuple(players)
 
+        t = _pattern_4.findall(m1.group(4))
+        if len(t) < 2:
+            raise ValueError("Invalid game table")
+
+        self.__table = Bone(Fruit.emoji2enum(t[0]), Fruit.emoji2enum(t[-1]))
+
+        if not self.__is_ended:
+            p_buttons = []
+            for row in buttons:
+                for btn in row:
+                    if "Accept Fate" in btn.text:
+                        self.__buttons = SkipTurnButton(btn)
+                        break
+                    m4 = _pattern_4.findall(btn.text)
+                    if len(m4) != 2:
+                        raise ValueError("Button with bone must have exactly 2 emojis")
+                    p_buttons.append(ButtonWithBone(Fruit.emoji2enum(m4[0]), Fruit.emoji2enum(m4[1]), btn))
+                else:
+                    continue
+                break
+            else:
+                self.__buttons = tuple(p_buttons)
+
         return self
 
     @property
@@ -112,6 +158,14 @@ class GameState:
     @property
     def players(self):
         return self.__players
+
+    @property
+    def table(self):
+        return self.__table
+
+    @property
+    def buttons(self):
+        return self.__buttons
 
     class Player:
         __slots__ = ("__is_turn", "__name", "__bones")

@@ -7,7 +7,7 @@ from telethon.sessions import MemorySession
 from telethon.tl.patched import Message
 from telethon.tl.types.auth import SentCode
 
-from game import GameState
+from game import ButtonWithBone, GameState, SkipTurnButton
 
 
 class ClientWorker(QObject):
@@ -51,6 +51,11 @@ class ClientWorker(QObject):
     def timerEvent(self, event: QTimerEvent) -> None: ...
 
     chat_removing = Signal(object)
-    sending_state = Signal(object, str,  GameState)
+    sending_state = Signal(object, str, GameState)
 
     async def __message_handler(self, message: Message) -> None: ...
+
+    async def __press_button(self, data: ButtonWithBone) -> None: ...
+
+    @Slot(object)
+    def press_button(self, data: Union[ButtonWithBone, SkipTurnButton]) -> None: ...

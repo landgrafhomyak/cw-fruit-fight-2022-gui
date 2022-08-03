@@ -1,8 +1,8 @@
 from PySide2.QtCore import QPoint, QRect, Qt, Signal, Slot
 from PySide2.QtGui import QBrush, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPalette, QPen, QResizeEvent, QTextOption
-from PySide2.QtWidgets import QApplication, QButtonGroup, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollBar, QSizePolicy, QToolButton, QVBoxLayout, QWidget
+from PySide2.QtWidgets import QApplication, QButtonGroup, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollBar, QSizePolicy, QStackedLayout, QToolButton, QVBoxLayout, QWidget
 
-from game import Bone, GameState
+from game import Bone, ButtonWithBone, GameState, SkipTurnButton
 
 
 class FruitFight2022MainWindow(QMainWindow):
@@ -319,7 +319,7 @@ class FruitFight2022GameInterface(QWidget):
         self.__chats.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.__chats, 1, 1)
 
-        self.__game = FruitFight2022GameInterface.GamePanel(self)
+        self.__game = FruitFight2022GameInterface.GamePanel(self, client_worker)
         self.__game.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.__game, 1, 2)
 
@@ -445,17 +445,50 @@ class FruitFight2022GameInterface(QWidget):
             self.repaint()
 
     class GamePanel(QWidget):
-        def __init__(self, parent):
+        skipping_turn = Signal(SkipTurnButton)
+
+        def __init__(self, parent, client_worker):
             super().__init__(parent)
-            self.__stamina = FruitFight2022GameInterface.StaminaPanel(self)
-            self.__hands = FruitFight2022GameInterface.PlayersHands(self)
 
-            layout = QVBoxLayout(self)
+            layout = QGridLayout(self)
             self.setLayout(layout)
+            layout.setColumnStretch(0, 0)
+            layout.setColumnStretch(1, 1)
+            layout.setRowStretch(0, 0)
+            layout.setRowStretch(1, 0)
+            layout.setRowStretch(2, 0)
+            layout.setRowStretch(3, 0)
+            layout.setRowStretch(4, 1)
 
-            layout.addWidget(self.__stamina, 0)
-            layout.addWidget(self.__hands, 0)
-            layout.addStretch(1)
+            self.__stamina = FruitFight2022GameInterface.StaminaPanel(self)
+            self.__stamina.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            layout.addWidget(self.__stamina, 0, 0, 1, 2)
+
+            self.__hands = FruitFight2022GameInterface.PlayersHands(self)
+            self.__hands.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            layout.addWidget(self.__hands, 1, 0, 1, 2)
+
+            table_label = QLabel("Table:")
+            layout.addWidget(table_label, 2, 0, Qt.AlignRight)
+            self.__table = FruitFight2022GameInterface.BonesRow(self)
+            self.__table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            layout.addWidget(self.__table, 2, 1)
+
+            buttons_label = QLabel("Hand (clickable):")
+            layout.addWidget(buttons_label, 3, 0, Qt.AlignRight)
+
+            self.__buttons_layout = QStackedLayout(self)
+            self.__buttons = FruitFight2022GameInterface.BonesRow(self)
+            self.__buttons.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.__buttons_layout.addWidget(self.__buttons)
+            skip_button = QPushButton("Skip turn", self)
+            self.__buttons_layout.addWidget(skip_button)
+            self.__skip_turn_data = None
+            layout.addLayout(self.__buttons_layout, 3, 1)
+
+            self.__buttons.clicked.connect(client_worker.press_button)
+            self.skipping_turn.connect(client_worker.press_button)
+            skip_button.clicked.connect(self.__skip_turn)
 
         def set_data(self, data, max_stamina: int):
             self.__stamina.set_left_max(data.stamina, max_stamina)
@@ -463,6 +496,18 @@ class FruitFight2022GameInterface(QWidget):
             self.__hands.ensure_players_count(len(data.players))
             for i, player in enumerate(data.players):
                 self.__hands.set_row(i, player.is_turn, player.name, player.bones)
+            self.__table.set_data((data.table,))
+            if type(data.buttons) is SkipTurnButton:
+                self.__skip_turn_data = data.buttons
+                self.__buttons_layout.setCurrentIndex(1)
+            else:
+                self.__buttons.set_data(data.buttons)
+                self.__buttons_layout.setCurrentIndex(0)
+
+        @Slot()
+        def __skip_turn(self):
+            if self.__skip_turn_data is not None:
+                self.skipping_turn.emit(self.__skip_turn_data)
 
     class ChatItem:
         __slots__ = ("__cid", "__name", "__is_turn", "__players_count")
@@ -697,6 +742,8 @@ class FruitFight2022GameInterface(QWidget):
                 self.repaint()
 
     class BonesRow(QWidget):
+        clicked = Signal(object)
+
         def __init__(self, parent):
             super().__init__(parent)
 
@@ -716,7 +763,7 @@ class FruitFight2022GameInterface(QWidget):
             if type(data) is not tuple:
                 raise TypeError("Bones row must be tuple")
             for bone in data:
-                if type(bone) is not Bone:
+                if type(bone) is not Bone and type(bone) is not ButtonWithBone:
                     raise TypeError("Bone has invalid type")
             self.__data = data
 
@@ -728,6 +775,12 @@ class FruitFight2022GameInterface(QWidget):
             for i, bone in enumerate(self.__data):
                 bone.paint(qp, Bone.width(self.height() - 1) * i + i * 2, 0, self.height() - 1)
             qp.end()
+
+        def mousePressEvent(self, event):
+            i = event.x() // (Bone.width(self.height() - 1) + 2)
+            if i >= len(self.__data):
+                return
+            self.clicked.emit(self.__data[i])
 
     class TurnPointer(QWidget):
         def __init__(self, parent):

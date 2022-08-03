@@ -9,7 +9,7 @@ from telethon.events import MessageEdited
 from telethon.sessions import MemorySession
 from telethon import TelegramClient
 
-from game import GameState
+from game import ButtonWithBone, GameState
 
 _DELAY_S = 1
 
@@ -122,12 +122,25 @@ class ClientWorker(QObject):
     sending_state = Signal(object, str, GameState)
 
     async def __message_handler(self, message):
-        state = GameState(message.raw_text)
-        if state is None:
-            return
+        try:
+            state = GameState(message.raw_text, message.buttons)
+            if state is None:
+                return
 
-        if state.is_ended:
-            self.chat_removing.emit(message.chat_id)
-            return
-        else:
-            self.sending_state.emit(message.chat_id, message.chat.title, state)
+            if state.is_ended:
+                self.chat_removing.emit(message.chat_id)
+                return
+            else:
+                self.sending_state.emit(message.chat_id, message.chat.title, state)
+        except Exception as exc:
+            traceback.print_exception(exc, file=sys.stderr)
+
+    async def __press_button(self, data):
+        await data.button.click()
+
+    @Slot(object)
+    def press_button(self, data):
+        try:
+            self.aioloop.run_until_complete(self.__press_button(data))
+        except Exception as exc:
+            traceback.print_exception(exc, file=sys.stderr)

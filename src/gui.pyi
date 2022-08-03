@@ -2,9 +2,9 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from PySide2.QtCore import Signal, Slot
 from PySide2.QtGui import QMouseEvent, QPainter, QPaintEvent, QResizeEvent, QWheelEvent
-from PySide2.QtWidgets import QButtonGroup, QCheckBox, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QToolButton, QWidget
+from PySide2.QtWidgets import QButtonGroup, QCheckBox, QGridLayout, QLabel, QLineEdit, QListView, QMainWindow, QPushButton, QRadioButton, QScrollArea, QScrollBar, QStackedLayout, QToolButton, QWidget
 
-from game import Bone, GameState
+from game import Bone, GameState, SkipTurnButton
 from src.client import ClientWorker
 
 
@@ -162,8 +162,13 @@ class FruitFight2022GameInterface(QWidget):
     class GamePanel(QWidget):
         __stamina: FruitFight2022GameInterface.StaminaPanel
         __hands: 'FruitFight2022GameInterface.PlayersHands'
+        __table: FruitFight2022GameInterface.BonesRow
+        __buttons: FruitFight2022GameInterface.BonesRow
+        __buttons_layout: QStackedLayout
+        __skip_turn_data: Optional[SkipTurnButton]
+        skipping_turn = Signal(SkipTurnButton)
 
-        def __init__(self, parent: QWidget) -> None: ...
+        def __init__(self, parent: QWidget, client_worker: ClientWorker) -> None: ...
 
         def set_data(self, data: GameState, max_stamina: int) -> None: ...
 
@@ -258,6 +263,7 @@ class FruitFight2022GameInterface(QWidget):
 
     class BonesRow(QWidget):
         __data: Tuple[Bone, ...]
+        clicked = Signal(object)
 
         def __init__(self, parent: QWidget): ...
 
@@ -269,6 +275,8 @@ class FruitFight2022GameInterface(QWidget):
         def set_data(self, data: Tuple[Bone, ...]) -> None: ...
 
         def paintEvent(self, event: QPaintEvent) -> None: ...
+
+        def mousePressEvent(self, event: QMouseEvent) -> None: ...
 
     class TurnPointer(QWidget):
         __is_on: bool

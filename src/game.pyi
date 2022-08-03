@@ -1,7 +1,8 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from PySide2.QtGui import QPainter
 from PySide2.QtSvg import QSvgRenderer
+from telethon.tl.custom import MessageButton
 
 
 class Fruit:
@@ -48,15 +49,36 @@ class Bone:
     def paint(self, qp: QPainter, x: int, y: int, height: int) -> None: ...
 
 
+class ButtonWithBone(Bone):
+    __slots__ = ...
+    __button: MessageButton
+
+    def __init__(self, left: Fruit, right: Fruit, button: MessageButton) -> None: ...
+
+    @property
+    def button(self) -> MessageButton: ...
+
+
+class SkipTurnButton(Bone):
+    __slots__ = ...
+    __button: MessageButton
+
+    def __init__(self, button: MessageButton) -> None: ...
+
+    @property
+    def button(self) -> MessageButton: ...
+
+
 class GameState:
     __slots__ = ...
 
     __is_ended: bool
     __stamina: int
     __players: Tuple['GameState.Player', ...]
-    __table: None
+    __table: Bone
+    __buttons: Union[Tuple[ButtonWithBone, ...], SkipTurnButton]
 
-    def __new__(cls, raw_text: str) -> Optional[GameState]: ...
+    def __new__(cls, raw_text: str, buttons: Optional[List[List[MessageButton]]]) -> Optional[GameState]: ...
 
     @property
     def is_ended(self) -> bool: ...
@@ -66,6 +88,12 @@ class GameState:
 
     @property
     def players(self) -> Tuple['GameState.Player', ...]: ...
+
+    @property
+    def table(self) -> Bone: ...
+
+    @property
+    def buttons(self) -> Optional[Tuple[ButtonWithBone, ...]]: ...
 
     class Player:
         __slots__ = ...
