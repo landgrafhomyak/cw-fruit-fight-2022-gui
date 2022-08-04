@@ -5,3 +5,11 @@
 /src/res.py
 *.session
 *.session-journal
+*.egg-info
+
+/cw_fruit_fight_2022_gui_client/gui.c
+/cw_fruit_fight_2022_gui_client/gui.h
+/cw_fruit_fight_2022_gui_client/client.c
+/cw_fruit_fight_2022_gui_client/client.h
+/cw_fruit_fight_2022_gui_client/game.c
+/cw_fruit_fight_2022_gui_client/game.h
