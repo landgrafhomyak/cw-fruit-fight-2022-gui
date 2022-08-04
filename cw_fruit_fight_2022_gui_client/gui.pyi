@@ -52,8 +52,7 @@ class Cwff2022gcClientConfiguration(QWidget):
 
 
 class Cwff2022gcGameConfigPanel(QWidget):
-    staying_on_top = Signal(bool)
-    setting_ingame_name = Signal(str)
+    set_ingame_name = Signal(str)
 
     def __init__(self, parent: QWidget) -> None: ...
 
@@ -99,7 +98,7 @@ class Cwff2022gcPlayersHands(QWidget):
 
 
 class Cwff2022gcGamePanel(QWidget):
-    skipping_turn = Signal(Cwff202gcSkipTurnButton)
+    skip_turn = Signal(Cwff202gcSkipTurnButton)
 
     def __init__(self, parent: QWidget, client_worker: Cwff2022gcClientThread) -> None: ...
 
@@ -107,8 +106,6 @@ class Cwff2022gcGamePanel(QWidget):
 
 
 class Cwff2022gcGameTab(QWidget):
-    staying_on_top = Signal(bool)
-
     def __init__(self, parent: QWidget, client_worker: Cwff2022gcClientThread) -> None: ...
 
 

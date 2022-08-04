@@ -71,7 +71,7 @@ class Cwff2022gcClientWorker(QObject):
             await self.__client.send_code_request(phone)
             self.phone_sent.emit()
         except Exception as exc:
-            traceback.print_exc(exc, file=sys.stderr)
+            traceback.print_exception(exc, file=sys.stderr)
             self.sending_phone_error.emit(str(exc))
 
     @AsyncSlot(str, str, str)
@@ -85,7 +85,7 @@ class Cwff2022gcClientWorker(QObject):
             user = await self.__client.get_me()
             self.signed_in.emit((user.first_name or "") + " " + (user.last_name or ""))
         except Exception as exc:
-            traceback.print_exc(exc, file=sys.stderr)
+            traceback.print_exception(exc, file=sys.stderr)
             self.signing_in_error.emit(str(exc))
 
     chat_removed = Signal(object)

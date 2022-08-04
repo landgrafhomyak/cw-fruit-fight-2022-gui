@@ -52,20 +52,20 @@ setup(
             Extension(
                 name="gui",
                 sources=[
-                    "./src/cw_fruit_fight_2022_gui_client/gui.pyx",
+                    "./cw_fruit_fight_2022_gui_client/gui.pyx",
                 ]
             ),
             Extension(
                 name="client",
                 sources=[
-                    "./src/cw_fruit_fight_2022_gui_client/client.pyx",
+                    "./cw_fruit_fight_2022_gui_client/client.pyx",
                 ]
             ),
             Extension(
                 name="game",
                 sources=[
-                    "./src/cw_fruit_fight_2022_gui_client/game.pyx",
-                    "./src/cw_fruit_fight_2022_gui_client/_game.c",
+                    "./cw_fruit_fight_2022_gui_client/game.pyx",
+                    "./cw_fruit_fight_2022_gui_client/_game.c",
                 ]
             )
         ],

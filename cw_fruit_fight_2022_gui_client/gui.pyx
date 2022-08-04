@@ -17,6 +17,15 @@ class Cwff2022gcAuthConfiguration(QWidget):
         self.setLayout(layout)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
+        layout.setRowStretch(0, 0)
+        layout.setRowStretch(1, 0)
+        layout.setRowStretch(2, 0)
+        layout.setRowStretch(3, 0)
+        layout.setRowStretch(4, 0)
+        layout.setRowStretch(5, 0)
+        layout.setRowStretch(6, 0)
+        layout.setRowStretch(7, 0)
+        layout.setRowStretch(8, 1)
 
         layout.addWidget(QLabel("Authorization:"), 0, 0, 1, 2, Qt.AlignLeft)
 
@@ -26,12 +35,12 @@ class Cwff2022gcAuthConfiguration(QWidget):
         self.__phone_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self.__phone_input, 1, 1)
 
-        buttons_layout = QVBoxLayout(self)
-        self.__phone_button = QPushButton("Send code", self)
-        buttons_layout.addWidget(self.__phone_button, 1, Qt.AlignRight)
+        buttons_layout = QHBoxLayout(self)
         self.__change_phone_button = QPushButton("Change phone", self)
         self.__change_phone_button.setEnabled(False)
-        buttons_layout.addWidget(self.__change_phone_button, 1, Qt.AlignLeft)
+        buttons_layout.addWidget(self.__change_phone_button, 1, Qt.AlignRight)
+        self.__phone_button = QPushButton("Send code", self)
+        buttons_layout.addWidget(self.__phone_button, 1, Qt.AlignLeft)
         layout.addLayout(buttons_layout, 2, 0, 1, 2)
 
         self.__code_label = QLabel("Code:", self)
@@ -95,7 +104,7 @@ class Cwff2022gcAuthConfiguration(QWidget):
         self.__phone_label.setEnabled(False)
         self.__phone_input.setEnabled(False)
         self.__phone_button.setEnabled(False)
-        self.sending_phone.emit(self.__phone_input.text())
+        self.send_phone.emit(self.__phone_input.text())
 
     @Slot()
     def __phone_sent(self):
@@ -129,7 +138,7 @@ class Cwff2022gcAuthConfiguration(QWidget):
         self.__password_label.setEnabled(False)
         self.__password_input.setEnabled(False)
         self.__sign_in_button.setEnabled(False)
-        self.sending_code_and_password.emit(self.__phone_input.text(), self.__code_input.text(), self.__password_input.text())
+        self.send_code_and_password.emit(self.__phone_input.text(), self.__code_input.text(), self.__password_input.text())
 
     @Slot()
     def __signed_in(self) -> None:
@@ -489,7 +498,6 @@ class Cwff2022gcClientConfiguration(QWidget):
 
 
 class Cwff2022gcGameConfigPanel(QWidget):
-    stay_on_top = Signal(bool)
     set_ingame_name = Signal(str)
 
     def __init__(self, parent):
@@ -498,21 +506,14 @@ class Cwff2022gcGameConfigPanel(QWidget):
         layout = QHBoxLayout(self)
         self.setLayout(layout)
 
-        self.__stay_on_top_button = QCheckBox("Pin on top", self)
-        layout.addWidget(self.__stay_on_top_button, 0)
         nickname_label = QLabel("In-game name:")
         layout.addWidget(nickname_label, 0)
         self.__nickname_input = QLineEdit(self)
         layout.addWidget(self.__nickname_input, 1)
-        apply_nickname = QPushButton("Apply nickname")
+        apply_nickname = QPushButton("Apply name")
         layout.addWidget(apply_nickname, 0)
 
-        self.__stay_on_top_button.clicked.connect(self.__stay_on_top)
         apply_nickname.clicked.connect(self.__set_ingame_name)
-
-    @Slot()
-    def __stay_on_top(self):
-        self.stay_on_top.emit(self.__stay_on_top_button.isChecked())
 
     @Slot()
     def __set_ingame_name(self):
@@ -722,8 +723,6 @@ class Cwff2022gcGamePanel(QWidget):
 
 
 class Cwff2022gcGameTab(QWidget):
-    stay_on_top = Signal(bool)
-
     def __init__(self, parent, client_worker):
         super().__init__(parent)
         layout = QGridLayout(self)
@@ -758,7 +757,6 @@ class Cwff2022gcGameTab(QWidget):
         self.__chats.selected.connect(self.__chat_selected)
         self.__chats.unselected.connect(self.__chat_unselect)
 
-        config.stay_on_top.connect(self.stay_on_top)
         config.set_ingame_name.connect(self.__set_ingame_name)
 
     @Slot(object)
@@ -812,6 +810,7 @@ class Cwff2022gcMainWindow(QMainWindow):
 
     def __init__(self, client_worker):
         super().__init__()
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.__client_worker = client_worker
         self.setWindowTitle("ChatWars Fruit fight 2022 GUI Client")
         self.__client_config_tab = Cwff2022gcClientConfiguration(self, client_worker)
@@ -820,7 +819,6 @@ class Cwff2022gcMainWindow(QMainWindow):
         self.setCentralWidget(self.__client_config_tab)
         client_worker.client_created_need_auth.connect(self.__client_created_need_auth)
         client_worker.client_created_auth_complete.connect(self.__client_created_auth_complete)
-        self.__game_interface_tab.stay_on_top.connect(self.__stay_on_top)
 
     @Slot()
     def __client_created_need_auth(self):
@@ -832,8 +830,3 @@ class Cwff2022gcMainWindow(QMainWindow):
     @Slot()
     def __client_created_auth_complete(self):
         self.setCentralWidget(self.__game_interface_tab)
-
-    @Slot(bool)
-    def __stay_on_top(self, state):
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, state)
-        self.show()
