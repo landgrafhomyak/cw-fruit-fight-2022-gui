@@ -49,7 +49,6 @@ cpdef __Cwff2022gcFruit_FromEmoji(emoji):
 
 __Cwff2022gcFruit_Values = (<object> Cwff2022gcFruit_Apple, <object> Cwff2022gcFruit_Banana, <object> Cwff2022gcFruit_Cherry, <object> Cwff2022gcFruit_Lemon, <object> Cwff2022gcFruit_Orange, <object> Cwff2022gcFruit_Pineapple, <object> Cwff2022gcFruit_Watermelon)
 
-
 Cwff2022gcFruit = _Cwff2022gcFruit_PrepareType({
     "Apple": <object> Cwff2022gcFruit_Apple,
     "Banana": <object> Cwff2022gcFruit_Banana,
@@ -84,18 +83,6 @@ cdef class Cwff2022gcBone:
         self.left.renderer.render(qp, QRect(x + 2, y + 2, height - 4, height - 3))
         self.right.renderer.render(qp, QRect(x + height + 2, y + 2, height - 4, height - 3))
 
-cdef class Cwff2022gcChatInfo:
-    cdef readonly object cid
-    cdef readonly str name
-    cdef public bint is_turn
-    cdef public int players_count
-
-    def __cinit__(self, cid, name):
-        self.cid = cid
-        self.name = name
-        self.is_turn = False
-        self.players_count = 0
-
 cdef class Cwff202gcButtonWithBone(Cwff2022gcBone):
     cdef readonly object button
 
@@ -109,77 +96,54 @@ cdef class Cwff202gcSkipTurnButton:
     def __cinit__(self, button):
         self.button = button
 
-cdef object __pattern_1 = re.compile(r"^Fruit war (ongoing|ended)!\nStamina:\s*(-?\d+)\U0001F50B\n([\s\S]+)\n---\n([^\n]+)\n---")
-cdef object __pattern_2 = re.compile(r"(?<=\n)(\U0001F7E2|\u26AA\uFE0F)([^\n]+)\n([^\n]+)(?=\n)")
-cdef object __pattern_3 = re.compile(r"\[([^\]]+)\]")
+cdef class Cwff2022gcChatInfo:
+    cdef readonly object cid
+    cdef readonly str name
+    cdef public bint is_turn
+    cdef public bint is_joinable
+    cdef public bint is_started
+    cdef public int players_count
 
-cdef extern from *:
-    """
-    #define set_to_pointer(PTR, VALUE) (Py_INCREF(VALUE), *(PTR) = (VALUE))
-    """
-    void set_to_pointer(PyObject ** PTR, object VALUE)
+    def __cinit__(self, cid, name):
+        self.cid = cid
+        self.name = name
+        self.is_turn = False
+        self.is_joinable = False
+        self.is_started = False
+        self.players_count = 0
 
-cdef public int _Cwff2022gcGameState_New(
-        str raw_text,
-        object buttons_in,
-        int *is_ended,
-        PyObject ** stamina,
-        PyObject ** players,
-        PyObject ** table,
-        PyObject ** buttons_out
-) except -1:
-    m1 = __pattern_1.search(raw_text)
-    if m1 is None:
-        return 0
-
-    is_ended[0] = 1 if m1.group(1) == "ended" or buttons_in is None else 0
-    set_to_pointer(stamina, int(m1.group(2)))
-
-    m2s = __pattern_2.findall(m1.group(3))
-    players_r = []
-    for m2 in m2s:
-        m3s = __pattern_3.findall(m2[2])
-        bones = []
-        for m3 in m3s:
-            m4 = Cwff2022gcFruit.emoji_regexp.findall(m3)
-            if len(m4) != 2:
-                raise ValueError("Bone must have exactly 2 emojis")
-            bones.append(Cwff2022gcBone(Cwff2022gcFruit.from_emoji(m4[0]), Cwff2022gcFruit.from_emoji(m4[1])))
-        players_r.append(Cwff2022gcPlayer(m2[0] == "\U0001F7E2", m2[1], tuple(bones)))
-
-    set_to_pointer(players, tuple(players_r))
-
-    t = Cwff2022gcFruit.emoji_regexp.findall(m1.group(4))
-    if len(t) < 2:
-        raise ValueError("Invalid game table")
-
-    set_to_pointer(table, Cwff2022gcBone(Cwff2022gcFruit.from_emoji(t[0]), Cwff2022gcFruit.from_emoji(t[-1])))
-
-    if not is_ended[0]:
-        p_buttons = []
-        for row in buttons_in:
-            for btn in row:
-                if "Accept Fate" in btn.text:
-                    set_to_pointer(buttons_out, Cwff202gcSkipTurnButton(btn))
-                    break
-                m4 = Cwff2022gcFruit.emoji_regexp.findall(btn.text)
-                if len(m4) != 2:
-                    raise ValueError("Button with bone must have exactly 2 emojis")
-                p_buttons.append(Cwff202gcButtonWithBone(Cwff2022gcFruit.from_emoji(m4[0]), Cwff2022gcFruit.from_emoji(m4[1]), btn))
-            else:
-                continue
-            break
-        else:
-            set_to_pointer(buttons_out, tuple(p_buttons))
-    else:
-        buttons_out[0] = NULL
-
-    return 1
+cdef object __pattern_c1 = re.compile(r"^Ready to embark on \U0001F95DFruit wars:((?:\n-\s[^\n]+)*)")
+cdef object __pattern_c2 = re.compile(r"(?<=\n)-\s([^\n]+)")
+cdef object __pattern_g1 = re.compile(r"^Fruit war (ongoing|ended)!\nStamina:\s*(-?\d+)\U0001F50B\n([\s\S]+)\n---\n([^\n]+)\n---")
+cdef object __pattern_g2 = re.compile(r"(?<=\n)(\U0001F7E2|\u26AA\uFE0F)([^\n]+)\n([^\n]+)(?=\n)")
+cdef object __pattern_g3 = re.compile(r"\[([^\]]+)\]")
 
 cdef extern:
     type _Cwff2022gcGameState_PrepareType(object dct)
 
-Cwff2022gcGameState = _Cwff2022gcGameState_PrepareType(dict())
+cdef class Cwff2022gcCollectingGame:
+    cdef readonly tuple players
+    cdef readonly object join_button
+    cdef readonly object start_button
+
+    def __cinit__(self, tuple players, object join_button, object start_button):
+        self.players = players
+        self.join_button = join_button
+        self.start_button = start_button
+
+cdef class Cwff2022gcGameState:
+    cdef readonly bint is_ended
+    cdef readonly object stamina
+    cdef readonly tuple players
+    cdef readonly Cwff2022gcBone table
+    cdef readonly object buttons
+
+    def __cinit__(self, bint is_ended, object stamina, tuple players, Cwff2022gcBone table, object buttons):
+        self.is_ended = is_ended
+        self.stamina = stamina
+        self.players = players
+        self.table = table
+        self.buttons = buttons
 
 cdef class Cwff2022gcPlayer:
     cdef readonly bint is_turn
@@ -190,3 +154,65 @@ cdef class Cwff2022gcPlayer:
         self.is_turn = is_turn
         self.name = name
         self.bones = bones
+
+cpdef object cwff2022gcParseGameMessage(str raw_text, object ibuttons):
+    cdef object c1 = __pattern_c1.search(raw_text)
+    cdef object join_button = None
+    cdef object start_button = None
+
+    if c1 is not None:
+        if ibuttons is not None:
+            for row in ibuttons:
+                for button in row:
+                    if join_button is None and "Join" in button.text:
+                        join_button = button
+                    if start_button is None and "Commence" in button.text:
+                        start_button = button
+        if start_button is None:
+            raise ValueError("Start button not found")
+        return Cwff2022gcCollectingGame(tuple(__pattern_c2.findall(c1.group(1))), join_button, start_button)
+
+    cdef object m1 = __pattern_g1.search(raw_text)
+    if m1 is None:
+        return None
+
+    cdef list players = []
+    cdef list bones
+    for m2 in __pattern_g2.findall(m1.group(3)):
+        bones = []
+        for m3 in __pattern_g3.findall(m2[2]):
+            m4 = Cwff2022gcFruit.emoji_regexp.findall(m3)
+            if len(m4) != 2:
+                raise ValueError("Bone must have exactly 2 emojis")
+            bones.append(Cwff2022gcBone(Cwff2022gcFruit.from_emoji(m4[0]), Cwff2022gcFruit.from_emoji(m4[1])))
+        players.append(Cwff2022gcPlayer(m2[0] == "\U0001F7E2", m2[1], tuple(bones)))
+
+    t = Cwff2022gcFruit.emoji_regexp.findall(m1.group(4))
+    if len(t) < 2:
+        raise ValueError("Invalid game table")
+
+    cdef object buttons = None
+    cdef list l_buttons = []
+    if ibuttons is not None:
+        for row in ibuttons:
+            for button in row:
+                if "Accept Fate" in button.text:
+                    buttons = Cwff202gcSkipTurnButton(button)
+                    break
+                m4 = Cwff2022gcFruit.emoji_regexp.findall(button.text)
+                if len(m4) != 2:
+                    raise ValueError("Button with bone must have exactly 2 emojis")
+                l_buttons.append(Cwff202gcButtonWithBone(Cwff2022gcFruit.from_emoji(m4[0]), Cwff2022gcFruit.from_emoji(m4[1]), button))
+            else:
+                continue
+            break
+        else:
+            buttons = l_buttons
+
+    return Cwff2022gcGameState(
+        m1.group(1) == "ended" or ibuttons is None,
+        int(m1.group(2)),
+        tuple(players),
+        Cwff2022gcBone(Cwff2022gcFruit.from_emoji(t[0]), Cwff2022gcFruit.from_emoji(t[-1])),
+        buttons
+    )

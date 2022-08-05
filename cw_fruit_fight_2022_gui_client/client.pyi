@@ -1,8 +1,8 @@
 from typing import Optional
 
-from cw_fruit_fight_2022_gui_client import Cwff2022gcGameState
 from PySide2.QtCore import QObject, QThread, Signal
 from qasync import asyncSlot as AsyncSlot
+from telethon.tl.custom import MessageButton
 
 
 class Cwff2022gcClientThread(QThread):
@@ -35,8 +35,7 @@ class Cwff2022gcClientWorker(QObject):
     @AsyncSlot(str, str, str)
     async def send_code_and_password(self, phone: str, code: str, password: str) -> None: ...
 
-    chat_removed = Signal(object)
-    chat_updated = Signal(object, str, Cwff2022gcGameState)
+    chat_updated = Signal(object, str, object)
 
     @AsyncSlot(object)
-    async def press_button(self, data) -> None: ...
+    async def press_button(self, data: MessageButton) -> None: ...

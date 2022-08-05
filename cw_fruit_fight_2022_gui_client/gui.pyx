@@ -2,7 +2,7 @@ from PySide2.QtCore import QPoint, QRect, Qt, Signal, Slot
 from PySide2.QtGui import QBrush, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPaintEvent, QPalette, QPen, QResizeEvent, Qt, QTextOption
 from PySide2.QtWidgets import QApplication, QButtonGroup, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollBar, QSizePolicy, QStackedLayout, QToolButton, QVBoxLayout, QWidget
 
-from .game import Cwff2022gcBone, Cwff2022gcChatInfo, Cwff2022gcGameState, Cwff202gcSkipTurnButton
+from .game import Cwff2022gcBone, Cwff2022gcChatInfo, Cwff2022gcCollectingGame, Cwff2022gcGameState, Cwff202gcSkipTurnButton
 
 
 class Cwff2022gcAuthConfiguration(QWidget):
@@ -304,10 +304,17 @@ class Cwff2022gcChatsList(QWidget):
             self.repaint()
 
         def __draw_item(self, qp, y, data, is_selected):
-            if data.is_turn:
-                background = QColor(100, 100, 255)
+            if data.is_started:
+                if data.is_turn:
+                    background = QColor(100, 100, 255)
+                else:
+                    background = QColor(225, 225, 255)
             else:
-                background = QColor(200, 200, 255)
+                if data.is_joinable or data.is_turn:
+                    background = QColor(255, 100, 100)
+                else:
+                    background = QColor(255, 225, 225)
+
             qp.setBrush(QBrush(background))
             qp.setPen(Qt.NoPen)
             qp.drawRect(0, y, self.width(), self.__height)
@@ -326,21 +333,11 @@ class Cwff2022gcChatsList(QWidget):
             qp.fillRect(r, gradient)
             del r, gradient
             qp.fillRect(self.width() - 5 - 10 * data.players_count, y, 10 * data.players_count + 5, self.__height, background)
-            qp.setBrush(QBrush(QColor(255, 255, 0)))
+            qp.setBrush(QBrush(QColor(0, 0, 0) if is_selected else QColor(255, 255, 0)))
             point_h_center = self.__height // 2 + y
             for x in range(self.width() - 5, self.width() - 5 - 10 * data.players_count, -10):
                 qp.drawPolygon((QPoint(x - 4, point_h_center - 7), QPoint(x, point_h_center), QPoint(x - 4, point_h_center + 7), QPoint(x - 8, point_h_center)))
             del point_h_center
-            if is_selected:
-                r = QRect(self.width() - 25, y, 25, self.__height)
-                gradient = QLinearGradient(r.bottomLeft(), r.topRight())
-                gradient.setStart(r.bottomLeft())
-                gradient.setFinalStop(r.bottomRight())
-                gradient.setColorAt(0, QColor(background.red(), background.green(), background.blue(), 0))
-                gradient.setColorAt(0.8, QColor(255, 0, 0))
-                gradient.setColorAt(1, QColor(255, 0, 0))
-                qp.fillRect(r, gradient)
-                del r, gradient
             qp.drawLine(0, y, self.width(), y)
             qp.drawLine(0, y + self.__height, self.width(), y + self.__height)
 
@@ -654,7 +651,8 @@ class Cwff2022gcPlayersHands(QWidget):
 
 
 class Cwff2022gcGamePanel(QWidget):
-    skip_turn = Signal(Cwff202gcSkipTurnButton)
+    skip_turn = Signal(object)
+    __press_button = Signal(object)
 
     def __init__(self, parent, client_worker):
         super().__init__(parent)
@@ -696,30 +694,95 @@ class Cwff2022gcGamePanel(QWidget):
         self.__skip_turn_data = None
         layout.addLayout(self.__buttons_layout, 3, 1)
 
-        self.__buttons.clicked.connect(client_worker.press_button)
+        self.__buttons.clicked.connect(self.__put_bone)
+        self.__press_button.connect(client_worker.press_button)
         self.skip_turn.connect(client_worker.press_button)
         skip_button.clicked.connect(self.__skip_turn)
 
+    @Slot(object)
+    def __put_bone(self, data):
+        self.__press_button.emit(data.button)
+
     def set_data(self, data, max_stamina: int):
-        self.__stamina.set_left_max(data.stamina, max_stamina)
-        self.__hands.clear()
-        self.__hands.ensure_players_count(len(data.players))
-        for i, player in enumerate(data.players):
-            self.__hands.set_row(i, player.is_turn, player.name, player.bones or ())
-        self.__table.set_data((data.table,))
-        if data.buttons is None:
-            self.__buttons_layout.setCurrentIndex(2)
-        elif type(data.buttons) is Cwff202gcSkipTurnButton:
-            self.__skip_turn_data = data.buttons
-            self.__buttons_layout.setCurrentIndex(1)
-        else:
-            self.__buttons.set_data(data.buttons)
-            self.__buttons_layout.setCurrentIndex(0)
+        if type(data) is Cwff2022gcGameState:
+            self.__stamina.set_left_max(data.stamina, max_stamina)
+            self.__hands.clear()
+            self.__hands.ensure_players_count(len(data.players))
+            for i, player in enumerate(data.players):
+                self.__hands.set_row(i, player.is_turn, player.name, player.bones or ())
+            self.__table.set_data((data.table,))
+            if data.buttons is None:
+                self.__buttons_layout.setCurrentIndex(2)
+            elif type(data.buttons) is Cwff202gcSkipTurnButton:
+                self.__skip_turn_data = data.buttons
+                self.__buttons_layout.setCurrentIndex(1)
+            else:
+                self.__buttons.set_data(data.buttons)
+                self.__buttons_layout.setCurrentIndex(0)
 
     @Slot()
     def __skip_turn(self):
         if self.__skip_turn_data is not None:
-            self.skip_turn.emit(self.__skip_turn_data)
+            self.skip_turn.emit(self.__skip_turn_data.button)
+
+
+class Cwff2022gcJoiner(QWidget):
+    join = Signal(object)
+    start = Signal(object)
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.__join_data = None
+        self.__start_data = None
+
+        layout = QGridLayout(self)
+        self.setLayout(layout)
+
+        layout.setColumnStretch(0, 0)
+        layout.setColumnStretch(1, 0)
+        layout.setColumnStretch(2, 1)
+        layout.setRowStretch(0, 0)
+        layout.setRowStretch(1, 0)
+        layout.setRowStretch(2, 1)
+
+        self.__names_layout = QVBoxLayout(self)
+        self.__names = []
+        layout.addLayout(self.__names_layout, 0, 0, 1, 2)
+
+        self.__join_button = QPushButton("Join", self)
+        self.__join_button.setEnabled(False)
+        layout.addWidget(self.__join_button, 1, 0)
+        self.__start_button = QPushButton("Start", self)
+        self.__start_button.setEnabled(False)
+        layout.addWidget(self.__start_button, 1, 1)
+
+        self.__join_button.clicked.connect(self.__join)
+        self.__start_button.clicked.connect(self.__start)
+
+    @Slot()
+    def __join(self):
+        if self.__join_data is not None:
+            self.join.emit(self.__join_data)
+
+    @Slot()
+    def __start(self):
+        if self.__start_data is not None:
+            self.join.emit(self.__start_data)
+
+    def set_data(self, data):
+        while len(self.__names) < len(data.players):
+            lbl = QLabel(self)
+            self.__names.append(lbl)
+            self.__names_layout.addWidget(lbl)
+        for lbl in self.__names:
+            lbl.setText("")
+        for lbl, name in zip(self.__names, data.players):
+            lbl.setText(name)
+
+        self.__join_data = data.join_button
+        self.__join_button.setEnabled(self.__join_data is not None)
+        self.__start_data = data.start_button
+        self.__start_button.setEnabled(self.__start_data is not None)
 
 
 class Cwff2022gcGameTab(QWidget):
@@ -742,10 +805,17 @@ class Cwff2022gcGameTab(QWidget):
         self.__chats.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.__chats, 1, 1)
 
+        self.__game_type_layout = QStackedLayout(self)
+        sentinel = QWidget(self)
+        self.__game_type_layout.addWidget(sentinel)
+        self.__joiner = Cwff2022gcJoiner(self)
+        self.__joiner.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.__game_type_layout.addWidget(self.__joiner)
         self.__game = Cwff2022gcGamePanel(self, client_worker)
-        self.__game.setDisabled(True)
         self.__game.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        layout.addWidget(self.__game, 1, 2)
+        self.__game_type_layout.addWidget(self.__game)
+        layout.addLayout(self.__game_type_layout, 1, 2)
+        self.__game_type_layout.setCurrentIndex(0)
 
         self.__chats_data = dict()
         self.__stamina_max_cache = dict()
@@ -753,45 +823,65 @@ class Cwff2022gcGameTab(QWidget):
         self.__ingame_name = None
 
         client_worker.chat_updated.connect(self.__chat_update)
-        client_worker.chat_removed.connect(self.__chat_delete)
         self.__chats.selected.connect(self.__chat_selected)
         self.__chats.unselected.connect(self.__chat_unselect)
-
         config.set_ingame_name.connect(self.__set_ingame_name)
+        self.__joiner.join.connect(client_worker.press_button)
+        self.__joiner.start.connect(client_worker.press_button)
 
-    @Slot(object)
-    def __chat_delete(self, cid):
-        if cid not in self.__chats_data:
-            return
-        self.__chats_data.pop(cid)
-        self.__chats.remove_cid(cid)
-        self.__stamina_max_cache.pop(cid)
-
-    @Slot(object, str, Cwff2022gcGameState)
+    @Slot(object, str, object)
     def __chat_update(self, cid, chat_name, data):
         self.__chats_data[cid] = data
-        self.__stamina_max_cache[cid] = max(self.__stamina_max_cache.get(cid, 0), data.stamina)
         ci = Cwff2022gcChatInfo(cid, chat_name)
         ci.players_count = len(data.players)
-        for pl in data.players:
-            if pl.is_turn and pl.name == self.__ingame_name:
-                ci.is_turn = True
-                break
-        self.__chats.ensure_chat(ci)
-        if cid == self.__current_chat:
-            self.__game.set_data(self.__chats_data[cid], self.__stamina_max_cache[cid])
+        if type(data) is Cwff2022gcCollectingGame:
+            ci.is_joinable = data.join_button is not None
+            ci.is_started = False
+            ci.is_turn = len(data.players) >= 1 and data.players[0] == self.__ingame_name
+            if cid == self.__current_chat:
+                self.__game_type_layout.setCurrentIndex(1)
+                self.__joiner.set_data(data)
+            self.__chats.ensure_chat(ci)
+
+        elif type(data) is Cwff2022gcGameState:
+            ci.is_joinable = False
+            ci.is_started = True
+            self.__stamina_max_cache[cid] = max(self.__stamina_max_cache.get(cid, 0), data.stamina)
+            for pl in data.players:
+                if pl.is_turn and pl.name == self.__ingame_name:
+                    ci.is_turn = True
+                    break
+            if cid == self.__current_chat:
+                self.__game_type_layout.setCurrentIndex(2)
+                self.__game.set_data(data, self.__stamina_max_cache[cid])
+
+            if data.is_ended and cid in self.__chats_data:
+                self.__chats_data.pop(cid)
+                self.__chats.remove_cid(cid)
+                self.__stamina_max_cache.pop(cid)
+            else:
+                self.__chats.ensure_chat(ci)
+        else:
+            raise TypeError("Unknown type of game data")
 
     @Slot(object)
     def __chat_selected(self, cid):
         if cid not in self.__chats_data:
             return
-        self.__game.setEnabled(True)
-        self.__game.set_data(self.__chats_data[cid], self.__stamina_max_cache[cid])
+        data = self.__chats_data[cid]
         self.__current_chat = cid
+        if type(data) is Cwff2022gcCollectingGame:
+            self.__joiner.set_data(data)
+            self.__game_type_layout.setCurrentIndex(1)
+        elif type(data) is Cwff2022gcGameState:
+            self.__game.set_data(data, self.__stamina_max_cache.get(cid, 0))
+            self.__game_type_layout.setCurrentIndex(2)
+        else:
+            raise TypeError("Unknown type of game data")
 
     @Slot()
     def __chat_unselect(self):
-        self.__game.setEnabled(False)
+        self.__game_type_layout.setCurrentIndex(0)
         self.__current_chat = None
 
     @Slot(str)

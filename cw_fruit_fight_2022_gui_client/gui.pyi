@@ -5,7 +5,7 @@ from PySide2.QtGui import QCloseEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide2.QtWidgets import QMainWindow, QWidget
 
 from .client import Cwff2022gcClientThread
-from .game import Cwff2022gcBone, Cwff2022gcChatInfo, Cwff202gcSkipTurnButton
+from .game import Cwff2022gcBone, Cwff2022gcChatInfo, Cwff2022gcGameState, Cwff202gcSkipTurnButton, Cwff2022gcCollectingGame
 
 
 class Cwff2022gcAuthConfiguration(QWidget):
@@ -102,7 +102,16 @@ class Cwff2022gcGamePanel(QWidget):
 
     def __init__(self, parent: QWidget, client_worker: Cwff2022gcClientThread) -> None: ...
 
-    def set_data(self, data: Cwff2022gcChatInfo, max_stamina: int) -> None: ...
+    def set_data(self, data: Cwff2022gcGameState, max_stamina: int) -> None: ...
+
+
+class Cwff2022gcJoiner(QWidget):
+    join = Signal(object)
+    start = Signal(object)
+
+    def __init__(self, parent: QWidget) -> None: ...
+
+    def set_data(self, data: Cwff2022gcCollectingGame) -> None: ...
 
 
 class Cwff2022gcGameTab(QWidget):

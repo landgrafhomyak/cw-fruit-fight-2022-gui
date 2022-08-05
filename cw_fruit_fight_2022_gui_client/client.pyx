@@ -2,11 +2,11 @@ import asyncio
 import sys
 import traceback
 
-from cw_fruit_fight_2022_gui_client.game import Cwff2022gcGameState
+from cw_fruit_fight_2022_gui_client.game import Cwff2022gcGameState, cwff2022gcParseGameMessage
 from PySide2.QtCore import QObject, QThread, Signal
 from qasync import asyncSlot as AsyncSlot, QEventLoop
 from telethon import TelegramClient
-from telethon.events import MessageEdited
+from telethon.events import MessageEdited, NewMessage
 from telethon.sessions import MemorySession
 
 
@@ -40,6 +40,7 @@ class Cwff2022gcClientWorker(QObject):
                 session=session
             )
             self.__client.on(MessageEdited(from_users=5265011919))(self.__message_handler)
+            self.__client.on(NewMessage(from_users=5265011919))(self.__message_handler)
 
             await self.__client.connect()
             if not await self.__client.is_user_authorized():
@@ -88,27 +89,21 @@ class Cwff2022gcClientWorker(QObject):
             traceback.print_exception(exc, file=sys.stderr)
             self.signing_in_error.emit(str(exc))
 
-    chat_removed = Signal(object)
     chat_updated = Signal(object, str, Cwff2022gcGameState)
 
     async def __message_handler(self, message):
         try:
-            state = Cwff2022gcGameState(message.raw_text, message.buttons)
+            state = cwff2022gcParseGameMessage(message.raw_text, message.buttons)
             if state is None:
                 return
 
-            if state.is_ended:
-                self.chat_updated.emit(message.chat_id, message.chat.title, state)
-                self.chat_removed.emit(message.chat_id)
-                return
-            else:
-                self.chat_updated.emit(message.chat_id, message.chat.title, state)
+            self.chat_updated.emit(message.chat_id, message.chat.title, state)
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
 
     @AsyncSlot(object)
     async def press_button(self, data):
         try:
-            await data.button.click()
+            await data.click()
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)
