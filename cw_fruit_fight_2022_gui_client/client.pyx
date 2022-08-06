@@ -6,6 +6,7 @@ from cw_fruit_fight_2022_gui_client.game import Cwff2022gcGameState, cwff2022gcP
 from PySide2.QtCore import QObject, QThread, Signal
 from qasync import asyncSlot as AsyncSlot, QEventLoop
 from telethon import TelegramClient
+from telethon.errors import DataInvalidError
 from telethon.events import MessageEdited, NewMessage
 from telethon.sessions import MemorySession
 
@@ -105,5 +106,7 @@ class Cwff2022gcClientWorker(QObject):
     async def press_button(self, data):
         try:
             await data.click()
+        except DataInvalidError:
+            pass
         except Exception as exc:
             traceback.print_exception(exc, file=sys.stderr)

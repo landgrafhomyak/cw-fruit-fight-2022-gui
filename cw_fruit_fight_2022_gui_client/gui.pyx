@@ -190,6 +190,7 @@ class Cwff2022gcChatsList(QWidget):
         super().__init__(parent)
 
         layout = QHBoxLayout(self)
+        layout.setSpacing(0)
         self.setLayout(layout)
 
         self.__canvas = Cwff2022gcChatsList.Canvas(self, self.selected, self.unselected)
@@ -310,7 +311,7 @@ class Cwff2022gcChatsList(QWidget):
                 else:
                     background = QColor(225, 225, 255)
             else:
-                if data.is_joinable or data.is_turn:
+                if data.is_turn:
                     background = QColor(255, 100, 100)
                 else:
                     background = QColor(255, 225, 225)
@@ -822,7 +823,7 @@ class Cwff2022gcGameTab(QWidget):
         self.__current_chat = None
         self.__ingame_name = None
 
-        client_worker.chat_updated.connect(self.__chat_update)
+        client_worker.chat_updated.connect(self.__chat_updated)
         self.__chats.selected.connect(self.__chat_selected)
         self.__chats.unselected.connect(self.__chat_unselect)
         config.set_ingame_name.connect(self.__set_ingame_name)
@@ -830,14 +831,15 @@ class Cwff2022gcGameTab(QWidget):
         self.__joiner.start.connect(client_worker.press_button)
 
     @Slot(object, str, object)
-    def __chat_update(self, cid, chat_name, data):
+    def __chat_updated(self, cid, chat_name, data):
         self.__chats_data[cid] = data
         ci = Cwff2022gcChatInfo(cid, chat_name)
         ci.players_count = len(data.players)
         if type(data) is Cwff2022gcCollectingGame:
+            self.__stamina_max_cache.pop(cid, None)
             ci.is_joinable = data.join_button is not None
             ci.is_started = False
-            ci.is_turn = len(data.players) >= 1 and data.players[0] == self.__ingame_name
+            ci.is_turn = len(data.players) >= 1 and data.players[0] == self.__ingame_name or self.__ingame_name not in data.players and data.join_button is not None
             if cid == self.__current_chat:
                 self.__game_type_layout.setCurrentIndex(1)
                 self.__joiner.set_data(data)
@@ -889,9 +891,16 @@ class Cwff2022gcGameTab(QWidget):
         self.__ingame_name = new_name
         turns = set()
         for cid, data in self.__chats_data.items():
-            for pl in data.players:
-                if pl.is_turn and pl.name == self.__ingame_name:
+            if type(data) is Cwff2022gcCollectingGame:
+                if len(data.players) >= 1 and data.players[0] == self.__ingame_name or self.__ingame_name not in data.players and data.join_button is not None:
                     turns.add(cid)
+            elif type(data) is Cwff2022gcGameState:
+                for pl in data.players:
+                    if pl.is_turn and pl.name == self.__ingame_name:
+                        turns.add(cid)
+            else:
+                raise TypeError("Unknown type of game data")
+
         self.__chats.set_turn_for_chats(turns)
 
 
