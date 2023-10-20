@@ -3,7 +3,7 @@ from setuptools import setup, Extension
 
 setup(
     name="cw-fruit-fight-2022-gui-client",
-    version="0.0b2",
+    version="0.1a0",
     author="Andrew Golovashevich",
     maintainer="Andrew Golovashevich",
     url="http://github.com/landgrafhomyak/cw-fruit-fight-2022-gui-client",
@@ -24,7 +24,7 @@ setup(
         "Topic :: Games/Entertainment",
         "Typing :: Typed"
     ],
-    install_requires=["PySide2 == 5.15.2.1", "telethon == 1.24.0", "qasync == 0.23.0"],
+    install_requires=["PySide2 == 5.15.2.1", "telethon == 1.31.1", "qasync == 0.23.0"],
     packages=[
         "cw_fruit_fight_2022_gui_client",
     ],

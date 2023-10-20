@@ -1,6 +1,6 @@
 from PySide2.QtCore import QPoint, QRect, Qt, Signal, Slot
 from PySide2.QtGui import QBrush, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPaintEvent, QPalette, QPen, QResizeEvent, Qt, QTextOption
-from PySide2.QtWidgets import QApplication, QButtonGroup, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollBar, QSizePolicy, QStackedLayout, QToolButton, QVBoxLayout, QWidget
+from PySide2.QtWidgets import QApplication, QButtonGroup, QCheckBox, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollBar, QSizePolicy, QStackedLayout, QToolButton, QVBoxLayout, QWidget
 
 from .game import Cwff2022gcBone, Cwff2022gcChatInfo, Cwff2022gcCollectingGame, Cwff2022gcGameState, Cwff202gcSkipTurnButton
 
@@ -420,6 +420,7 @@ class Cwff2022gcClientConfiguration(QWidget):
         self.__file_button.setText("...")
         self.__file_button.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
         self.__file_button.setEnabled(False)
+        self.__file_button.clicked.connect(self.__select_file_from_disk)
         layout.addWidget(self.__file_button, 4, 2)
 
         self.__message_label = QLabel(self)
@@ -493,6 +494,12 @@ class Cwff2022gcClientConfiguration(QWidget):
         self.__file_label.setEnabled(True)
         self.__file_input.setEnabled(True)
         self.__file_button.setEnabled(True)
+
+    @Slot()
+    def __select_file_from_disk(self):
+        file, _ = QFileDialog.getSaveFileName(self.__file_button, 'Select or create session file', './', None)
+        self.__file_input.setText(file)
+
 
 
 class Cwff2022gcGameConfigPanel(QWidget):
@@ -900,7 +907,6 @@ class Cwff2022gcGameTab(QWidget):
                         turns.add(cid)
             else:
                 raise TypeError("Unknown type of game data")
-
         self.__chats.set_turn_for_chats(turns)
 
 

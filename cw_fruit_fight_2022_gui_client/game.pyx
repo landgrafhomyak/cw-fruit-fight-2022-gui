@@ -24,13 +24,13 @@ cdef extern:
     type _Cwff2022gcFruit_PrepareType(object dct)
 
 
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Apple, "\U0001F34F")
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Banana, "\U0001F34C")
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Cherry, "\U0001f352")
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Lemon, "\U0001F34B")
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Orange, "\U0001F34A\uFE0F")
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Pineapple, "\U0001F34D\uFE0F")
-_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Watermelon, "\U0001F349")
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Apple, "\U0001F383") # pumpkin
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Banana, "\U0001fac0") # heart
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Cherry, "\U0001f9e0") # brain
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Lemon, "\U0001fa78") # blood
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Orange, "\U0001f9b4") # bone
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Pineapple, "\U0001f480") # skull
+_Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Watermelon, "\U0001f9b7") # tooth
 
 _Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Apple, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./apple.svg"))))
 _Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Banana, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./banana.svg"))))
