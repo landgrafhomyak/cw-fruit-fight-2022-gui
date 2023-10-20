@@ -112,9 +112,9 @@ cdef class Cwff2022gcChatInfo:
         self.is_started = False
         self.players_count = 0
 
-cdef object __pattern_c1 = re.compile(r"^Ready to embark on \U0001F95DFruit wars:((?:\n-\s[^\n]+)*)")
+cdef object __pattern_c1 = re.compile(r"^Ready to embark on \U0001f383Spooky wars:((?:\n-\s[^\n]+)*)")
 cdef object __pattern_c2 = re.compile(r"(?<=\n)-\s([^\n]+)")
-cdef object __pattern_g1 = re.compile(r"^Fruit war (ongoing|ended)!\nStamina:\s*(-?\d+)\U0001F50B\n([\s\S]+)\n---\n([^\n]+)\n---")
+cdef object __pattern_g1 = re.compile(r"^Spooky war (ongoing|ended)!\nStamina:\s*(-?\d+)\U0001F50B\n([\s\S]+)\n---\n([^\n]+)\n---")
 cdef object __pattern_g2 = re.compile(r"(?<=\n)(\U0001F7E2|\u26AA\uFE0F)([^\n]+)\n([^\n]+)(?=\n)")
 cdef object __pattern_g3 = re.compile(r"\[([^\]]+)\]")
 
