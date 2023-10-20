@@ -32,13 +32,13 @@ _Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Orange, "\U0001f9b4") # bone
 _Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Pineapple, "\U0001f480") # skull
 _Cwff2022gcFruit_SetEmoji(Cwff2022gcFruit_Watermelon, "\U0001f9b7") # tooth
 
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Apple, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./apple.svg"))))
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Banana, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./banana.svg"))))
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Cherry, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./cherry.svg"))))
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Lemon, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./lemon.svg"))))
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Orange, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./orange.svg"))))
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Pineapple, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./pineapple.svg"))))
-_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Watermelon, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./watermelon.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Apple, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./pumpkin.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Banana, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./heart.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Cherry, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./brain.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Lemon, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./blood.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Orange, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./bone.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Pineapple, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./skull.svg"))))
+_Cwff2022gcFruit_SetRenderer(Cwff2022gcFruit_Watermelon, QSvgRenderer(QByteArray(pkg_resources.resource_string(__name__, "./tooth.svg"))))
 
 cpdef __Cwff2022gcFruit_FromEmoji(emoji):
     for entry in Cwff2022gcFruit.__values__:

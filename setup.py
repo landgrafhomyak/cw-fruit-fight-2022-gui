@@ -45,6 +45,14 @@ setup(
             "./client.pyi"
             "./game.pyi",
             "./gui.pyi",
+
+            "./pumpkin.svg",
+            "./blood.svg",
+            "./bone.svg",
+            "./tooth.svg",
+            "./skull.svg",
+            "./brain.svg",
+            "./heart.svg",
         ]
     },
     ext_modules=cythonize(
